@@ -1,0 +1,27 @@
+diff --git a/node_modules/next/dist/build/webpack/loaders/utils.js b/node_modules/next/dist/build/webpack/loaders/utils.js
+index 5c3625d..ed39414 100644
+--- a/node_modules/next/dist/build/webpack/loaders/utils.js
++++ b/node_modules/next/dist/build/webpack/loaders/utils.js
+@@ -18,7 +18,7 @@ function isClientComponentModule(mod) {
+     const hasClientDirective = ((ref = mod.buildInfo.rsc) == null ? void 0 : ref.type) === _constants.RSC_MODULE_TYPES.client;
+     return hasClientDirective || imageRegex.test(mod.resource);
+ }
+-const regexCSS = /\.(css|scss|sass)(\?.*)?$/;
++const regexCSS = /\.(css|scss|sass|css\.ts)(\?.*)?$/;
+ exports.regexCSS = regexCSS;
+ 
+ //# sourceMappingURL=utils.js.map
+\ No newline at end of file
+diff --git a/node_modules/next/dist/server/app-render.js b/node_modules/next/dist/server/app-render.js
+index 962bb1c..24c073d 100644
+--- a/node_modules/next/dist/server/app-render.js
++++ b/node_modules/next/dist/server/app-render.js
+@@ -351,7 +351,7 @@ function patchFetch(ComponentMod) {
+         // entrypoint.
+         if (serverCSSForEntries.includes(css) || !/\.module\.css/.test(css)) {
+             const mod = serverComponentManifest[css];
+-            if (mod) {
++            if (mod && mod.default) {
+                 for (const chunk of mod.default.chunks){
+                     chunks.add(chunk);
+                 }
