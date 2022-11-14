@@ -1,6 +1,5 @@
 /target
 /.idea
 .env
-flux-version.txt
-flux.sdl
 /.vscode
+**/target
