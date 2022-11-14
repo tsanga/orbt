@@ -11,11 +11,16 @@ export const vars = createThemeContract({
     text: {
       primary: "",
       secondary: "",
-      dim: ""
+      placeholder: "",
+      input: "",
+      dim: "",
     },
     border: {
       primary: "",
       secondary: "",
+    },
+    gradient: {
+      horizontal: "",
     },
   },
   spacing: {
@@ -34,6 +39,7 @@ export const vars = createThemeContract({
   },
   border: {
     solid: "",
+    __raw: "",
     radius: {
       sm: "",
       md: "",

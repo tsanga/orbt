@@ -1,6 +1,7 @@
 import React from "react";
 import * as styles from "./chat-box.css";
 import ChatToolBar from "./chat-tool-bar";
+import ChatBoxInput from "./chat-box-input";
 
 type Props = {
   subheading?: React.ReactNode;
@@ -16,6 +17,10 @@ const ChatBox = ({ subheading }: Props) => {
           <h5 className={styles.chatHeaderSubheading}>{subheading}</h5>
         )}
       </header>
+      <main className={styles.main}></main>
+      <footer className={styles.footer}>
+        <ChatBoxInput />
+      </footer>
     </div>
   );
 };

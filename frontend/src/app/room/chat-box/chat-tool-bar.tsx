@@ -11,20 +11,20 @@ export default function ChatToolBar() {
     <ul className={styles.toolbar}>
       <li className={styles.minimizeChatButton}>
         <button
-          className={`${theme.button.link} ${theme.button.small} ${theme.textColor.dim}`}
+          className={`${theme.button.link} ${theme.button.sm} ${theme.textColor.dim}`}
         >
           <LineArrowAway />
         </button>
       </li>
       <li className={styles.cog}>
         <button
-          className={`${theme.button.link} ${theme.button.small} ${theme.textColor.dim}`}
+          className={`${theme.button.link} ${theme.button.sm} ${theme.textColor.dim}`}
         >
           <CogIcon />
         </button>
       </li>
       <li>
-        <button className={`${theme.button.primary} ${theme.button.small}`}>
+        <button className={`${theme.button.primary} ${theme.button.sm}`}>
           <LogoutIcon />
           &nbsp; Leave Room
         </button>

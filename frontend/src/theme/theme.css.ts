@@ -1,5 +1,20 @@
-import { style, styleVariants } from "@vanilla-extract/css";
+import { style, styleVariants, ComplexStyleRule } from "@vanilla-extract/css";
 import { vars } from "./contract.css";
+
+export const display = styleVariants(
+  ["flex", "display", "block", "inline"].reduce(
+    (x: { [key: string]: ComplexStyleRule }, c: string) => (
+      (x[c] = { display: c }), x
+    ),
+    {}
+  )
+);
+
+export const width = styleVariants({
+  full: {
+    width: "100%",
+  },
+});
 
 export const background = styleVariants({
   primary: {
@@ -7,6 +22,9 @@ export const background = styleVariants({
   },
   secondary: {
     background: vars.color.background.secondary,
+  },
+  accentPrimary: {
+    background: vars.color.background.accentPrimary,
   },
 });
 
@@ -40,6 +58,11 @@ const buttonSmall = style({
   fontSize: vars.text.xs,
 });
 
+const buttonExtraSmall = style({
+  padding: "2px 3px",
+  fontSize: vars.text.xs,
+});
+
 export const button = styleVariants({
   primary: [
     buttonBase,
@@ -69,5 +92,25 @@ export const button = styleVariants({
       },
     },
   ],
-  small: [buttonBase, buttonSmall],
+  sm: [buttonBase, buttonSmall],
+  xs: [buttonBase, buttonExtraSmall],
+});
+
+const inputBase = style({
+  outline: "none",
+  color: vars.color.text.input,
+  padding: "12px 12px",
+  border: vars.border.solid,
+  borderColor: vars.color.border.primary,
+  borderRadius: vars.border.radius.md,
+  "::placeholder": {
+    color: vars.color.text.placeholder,
+  },
+});
+
+export const input = styleVariants({
+  primary: [inputBase],
+  lg: {
+    fontSize: vars.text.md,
+  },
 });

@@ -4,8 +4,11 @@ import { style } from "@vanilla-extract/css";
 export const chatContainer = style({
   borderLeft: vars.border.solid,
   borderColor: vars.color.border.primary,
-  height: `calc(100vh - (${vars.spacing.md})*2)`,
+  height: `calc(100vh)`,
   background: vars.color.background.accentPrimary,
+  display: "flex",
+  flexDirection: "column",
+  flex: 1,
 });
 
 export const chatHeader = style({
@@ -34,3 +37,17 @@ export const chatHeaderSubheading = style([
     marginTop: vars.spacing.xs,
   },
 ]);
+
+export const main = style({
+  flex: 1,
+});
+
+export const footer = style({
+  padding: vars.spacing.md,
+  borderTop: vars.border.solid,
+  borderColor: vars.color.border.primary,
+  minHeight: 70,
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+});

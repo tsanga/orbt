@@ -13,10 +13,16 @@ export const darkThemeClass = createTheme(vars, {
       primary: "white",
       secondary: "black",
       dim: "#2C2C36",
+      placeholder: "#46465B",
+      input: "#9696AD",
     },
     border: {
       primary: "#2C2C36",
       secondary: "",
+    },
+    gradient: {
+      horizontal:
+        "linear-gradient(90deg, #D478FF 0%, #7E59F6 59.5%, #503DC4 103.86%)",
     },
   },
   spacing: {
@@ -35,6 +41,7 @@ export const darkThemeClass = createTheme(vars, {
   },
   border: {
     solid: "1.5px solid",
+    __raw: "1.5px",
     radius: {
       sm: "3px",
       md: "6px",
