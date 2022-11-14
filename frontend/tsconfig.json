@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
-    "baseUrl": "src",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["app/*"],
-      "@theme": ["theme"]
+      "@/*": ["src/app/*"],
+      "@theme": ["src/theme"],
+      "@assets/*": ["src/assets/*"]
     },
     "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],
