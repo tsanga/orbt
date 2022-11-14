@@ -14,3 +14,4 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 indicatif = "0.17.1"
 console = "0.15.2"
+subprocess = "0.2.9"
