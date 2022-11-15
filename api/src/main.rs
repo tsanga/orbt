@@ -1,6 +1,12 @@
 mod server;
 mod model;
 mod schema;
+mod store;
+mod types;
+
+pub mod prelude {
+    pub use anyhow::Result;
+}
 
 use actix_web::{HttpServer, App, web::{Data, self}, guard};
 use dotenv::dotenv;
