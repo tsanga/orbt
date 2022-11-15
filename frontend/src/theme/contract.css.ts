@@ -7,6 +7,7 @@ export const vars = createThemeContract({
       secondary: "",
       accentPrimary: "",
       focus: "",
+      dim: "",
     },
     text: {
       primary: "",
@@ -45,6 +46,7 @@ export const vars = createThemeContract({
       sm: "",
       md: "",
       lg: "",
+      round: "",
     },
   },
 });

@@ -1,9 +1,12 @@
 import * as styles from "./page.css";
 import RoomTopBar from "./top-bar/room-top-bar";
 import RoomChatBox from "./chat-box/chat-box";
-import RoomChatParticipants from "./chat-participants/chat-participants";
+import RoomChatParticipants, {
+  Skeleton,
+} from "./chat-participants/chat-participants";
+import { Suspense } from "react";
 
-export default function RoomPage() {
+export default async function RoomPage() {
   return (
     <main className={styles.main}>
       <section className={styles.leftSection}>
@@ -11,7 +14,10 @@ export default function RoomPage() {
       </section>
       <section className={styles.rightSection}>
         <RoomChatBox subheading={"Hello"} />
-        <RoomChatParticipants />
+        <Suspense fallback={<Skeleton />}>
+          {/* @ts-expect-error Server Component */}
+          <RoomChatParticipants />
+        </Suspense>
       </section>
     </main>
   );

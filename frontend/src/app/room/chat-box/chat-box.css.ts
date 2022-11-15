@@ -22,10 +22,12 @@ export const chatHeader = style({
 
 export const chatHeaderHeading = style([
   theme.textColor.primary,
+  theme.display.flex,
   {
     fontSize: vars.text.md,
     fontWeight: 600,
-    marginTop: vars.spacing.xxs,
+    marginTop: vars.spacing.sm,
+    alignItems: "center",
   },
 ]);
 

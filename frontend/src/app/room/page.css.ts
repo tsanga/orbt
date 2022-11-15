@@ -12,6 +12,6 @@ export const leftSection = style({
 });
 
 export const rightSection = style({
-  minWidth: "450px",
+  minWidth: "500px",
   display: "flex",
 });

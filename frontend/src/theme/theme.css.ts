@@ -21,26 +21,26 @@ export const width = styleVariants({
   },
 });
 
-export const background = styleVariants({
-  primary: {
-    background: vars.color.background.primary,
-  },
-  secondary: {
-    background: vars.color.background.secondary,
-  },
-  accentPrimary: {
-    background: vars.color.background.accentPrimary,
-  },
-});
+type BackgroundColor = keyof typeof vars.color.background;
+export const background = styleVariants(
+  Object.keys(vars.color.background)
+    .map((x) => x as BackgroundColor)
+    .reduce(
+      (x: { [key: string]: ComplexStyleRule }, c: BackgroundColor) => (
+        (x[c] = { background: vars.color.background[c] }), x
+      ),
+      {}
+    )
+);
 
+type TextColor = keyof typeof vars.color.text;
 export const textColor = styleVariants(
   Object.keys(vars.color.text)
-    .map((x) => x as keyof typeof vars.color.text)
+    .map((x) => x as TextColor)
     .reduce(
-      (
-        x: { [key: string]: ComplexStyleRule },
-        c: keyof typeof vars.color.text
-      ) => ((x[c] = { color: vars.color.text[c] }), x),
+      (x: { [key: string]: ComplexStyleRule }, c: TextColor) => (
+        (x[c] = { color: vars.color.text[c] }), x
+      ),
       {}
     )
 );
@@ -125,13 +125,26 @@ const spin = keyframes({
   "100%": { transform: "rotate(360deg)" },
 });
 
+const pulse = keyframes({
+  "0%, 100%": {
+    opacity: 1,
+  },
+  "50%": {
+    opacity: 0.5,
+  },
+});
+
 export const animation = {
   spin,
+  pulse,
 };
 
 export const animate = styleVariants({
   spin: {
     animation: spin,
     animationDuration: "3s",
+  },
+  pulse: {
+    animation: `${pulse} 2s cubic-bezier(0.4, 0, 0.6, 1) infinite`,
   },
 });

@@ -6,8 +6,9 @@ export const darkThemeClass = createTheme(vars, {
     background: {
       primary: "black",
       secondary: "white",
-      accentPrimary: "#0A0A0C",
+      accentPrimary: "#0E0E11",
       focus: "#0C0C0E",
+      dim: "#0A0A0B",
     },
     text: {
       primary: "white",
@@ -47,6 +48,7 @@ export const darkThemeClass = createTheme(vars, {
       sm: "3px",
       md: "6px",
       lg: "9px",
+      round: "100%",
     },
   },
 });
