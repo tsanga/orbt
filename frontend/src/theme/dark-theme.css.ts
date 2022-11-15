@@ -12,6 +12,7 @@ export const darkThemeClass = createTheme(vars, {
     text: {
       primary: "white",
       secondary: "black",
+      accentPrimary: "#535364",
       dim: "#2C2C36",
       placeholder: "#46465B",
       input: "#9696AD",

@@ -1,4 +1,9 @@
-import { style, styleVariants, ComplexStyleRule } from "@vanilla-extract/css";
+import {
+  style,
+  styleVariants,
+  ComplexStyleRule,
+  keyframes,
+} from "@vanilla-extract/css";
 import { vars } from "./contract.css";
 
 export const display = styleVariants(
@@ -28,17 +33,17 @@ export const background = styleVariants({
   },
 });
 
-export const textColor = styleVariants({
-  primary: {
-    color: vars.color.text.primary,
-  },
-  secondary: {
-    color: vars.color.text.secondary,
-  },
-  dim: {
-    color: vars.color.text.dim,
-  },
-});
+export const textColor = styleVariants(
+  Object.keys(vars.color.text)
+    .map((x) => x as keyof typeof vars.color.text)
+    .reduce(
+      (
+        x: { [key: string]: ComplexStyleRule },
+        c: keyof typeof vars.color.text
+      ) => ((x[c] = { color: vars.color.text[c] }), x),
+      {}
+    )
+);
 
 const buttonBase = style({
   background: "none",
@@ -112,5 +117,21 @@ export const input = styleVariants({
   primary: [inputBase],
   lg: {
     fontSize: vars.text.md,
+  },
+});
+
+const spin = keyframes({
+  "0%": { transform: "rotate(0deg)" },
+  "100%": { transform: "rotate(360deg)" },
+});
+
+export const animation = {
+  spin,
+};
+
+export const animate = styleVariants({
+  spin: {
+    animation: spin,
+    animationDuration: "3s",
   },
 });

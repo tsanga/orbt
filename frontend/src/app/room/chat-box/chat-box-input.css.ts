@@ -2,6 +2,7 @@ import { style } from "@vanilla-extract/css";
 import { vars } from "@theme";
 import { theme } from "@theme";
 
+
 export const inputContainer = style([
   theme.width.full,
   theme.display.flex,
@@ -18,6 +19,7 @@ export const input = style([
   theme.input.lg,
   {
     flex: "1",
+    paddingRight: "4.5em",
   },
 ]);
 
