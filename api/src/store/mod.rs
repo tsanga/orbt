@@ -1,48 +1,42 @@
-use std::{collections::HashMap, sync::{Mutex, Arc}};
+pub mod user;
+pub mod room;
 
-use crate::{prelude::*, model::user::User};
+use std::sync::{Arc, RwLock};
 
-pub trait DataStore {
-    type Error;
-    type Model<I: ToString>: DataStoreModel<I>;
-    type Id: ToString;
+pub use user::UserStore;
+pub use room::RoomStore;
 
-    fn get_by_id<'a>(&'a self, id: &Self::Id) -> Result<Option<&'a Self::Model>, Self::Error>;
-    fn save(&mut self, model: &mut Self::Model) -> Result<(), Self::Error>;
-    fn delete(&mut self, id: &Self::Id) -> Result<(), Self::Error>;
+#[derive(Clone)]
+pub struct DataStore {
+    inner: Arc<DataStoreInner>,
 }
 
-pub trait DataStoreModel<I> where I: ToString {
-    fn get_id(&self) -> &I;
-}
-
-pub struct UserMemoryDataStore {
-    users: HashMap<u32, User>
-}
-
-impl DataStore for UserMemoryDataStore {
-    type Error = anyhow::Error;
-    type Id = u32;
-    type Model = User;
-
-    fn get_by_id<'a>(&'a self, id: &Self::Id) -> Result<Option<&'a Self::Model>, Self::Error> {
-        let user = self.users.get(id);
-        Ok(user)
+impl DataStore {
+    pub fn new() -> Self {
+        Self {
+            inner: Arc::new(DataStoreInner::new()),
+        }
     }
 
-    fn save(&mut self, model: &mut Self::Model) -> Result<(), Self::Error> {
-        if let Some(existing_user) = self.get_by_id(model)
+    pub fn user_store(&self) -> Arc<RwLock<UserStore>> {
+        self.inner.clone().user_store.clone()
     }
 
-    fn delete(&mut self, id: &Self::Id) -> Result<(), Self::Error> {
-        
-        Ok(())
+    pub fn room_store(&self) -> Arc<RwLock<RoomStore>> {
+        self.inner.clone().room_store.clone()
     }
 }
 
-impl DataStoreModel for User {
-    type Id = u32;
-    fn get_id(&self) -> &Self::Id {
-        &self.id
+pub struct DataStoreInner {
+    pub user_store: Arc<RwLock<UserStore>>,
+    pub room_store: Arc<RwLock<RoomStore>>,
+}
+
+impl DataStoreInner {
+    pub fn new() -> Self {
+        Self {
+            user_store: Arc::new(RwLock::new(UserStore::new())),
+            room_store: Arc::new(RwLock::new(RoomStore::new())),
+        }
     }
 }

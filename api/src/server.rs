@@ -4,20 +4,23 @@ use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
 
 use crate::schema::{Query, Mutation};
+use crate::store::DataStore;
 
 #[derive(Clone)]
 pub struct OrbtData {
-    pub schema: Schema<Query, Mutation, EmptySubscription>
+    pub schema: Schema<Query, Mutation, EmptySubscription>,
 }
 
 impl OrbtData {
-    pub fn new() -> Self {
+    pub fn new(data_store: DataStore) -> Self {
         Self {
             schema: Schema::build(
                 Query::default(),
                 Mutation::default(),
                 EmptySubscription
-            ).finish()
+            )
+            .data(data_store)
+            .finish()
         }
     }
 }
@@ -27,7 +30,6 @@ pub async fn graphql_root(
     req: GraphQLRequest,
 ) -> GraphQLResponse {
     let inner = req.into_inner();
-    // TODO: Insert actor/data here
     data.schema.execute(inner).await.into()
 }
 

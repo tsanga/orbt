@@ -1,4 +1,5 @@
 pub mod user;
+pub mod room;
 
 use async_graphql::*;
 
@@ -19,11 +20,19 @@ impl Query {
     async fn user<'ctx>(&self) -> user::UserQuery {
         user::UserQuery::default()
     }
+
+    async fn room<'ctx>(&self) -> room::RoomQuery {
+        room::RoomQuery::default()
+    }
 }
 
 #[Object]
 impl Mutation {
     async fn user<'ctx>(&self) -> user::UserMutation {
         user::UserMutation::default()
+    }
+
+    async fn room<'ctx>(&self) -> room::RoomMutation {
+        room::RoomMutation::default()
     }
 }
