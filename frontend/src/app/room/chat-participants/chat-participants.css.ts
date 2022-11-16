@@ -19,7 +19,6 @@ export const participantSkeleton = style([
   {
     width: "100%",
     paddingBottom: "100%",
-    content: "''",
     borderRadius: vars.border.radius.round,
     marginBottom: vars.spacing.xs,
     border: vars.border.solid,

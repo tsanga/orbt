@@ -10,8 +10,8 @@ export type UserDisplayPartial = Pick<
 >;
 
 export enum Status {
-  Connecting = "CONNECTING",
-  Connected = "CONNECTED",
-  Away = "AWAY",
-  Disconnected = "DISCONNECTED",
+  CONNECTED = "connected",
+  AWAY = "away",
+  CONNECTING = "connecting",
+  DISCONNECTED = "disconnected",
 }

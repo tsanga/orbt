@@ -134,6 +134,15 @@ const pulse = keyframes({
   },
 });
 
+const pulseLow = keyframes({
+  "0%, 100%": {
+    opacity: 0.2,
+  },
+  "50%": {
+    opacity: 0.1,
+  },
+});
+
 export const animation = {
   spin,
   pulse,
@@ -146,5 +155,8 @@ export const animate = styleVariants({
   },
   pulse: {
     animation: `${pulse} 2s cubic-bezier(0.4, 0, 0.6, 1) infinite`,
+  },
+  pulseLow: {
+    animation: `${pulseLow} 2s cubic-bezier(0.4, 0, 0.6, 1) infinite`,
   },
 });
