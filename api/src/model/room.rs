@@ -78,6 +78,14 @@ impl Room {
         self.members.iter().any(|m| m.user == id)
     }
 
+    pub fn is_owner(&self, id: u32) -> bool {
+        if let Some(owner) = self.owner {
+            owner == id
+        } else {
+            false
+        }
+    }
+
     fn can_pass_remote(&self, from: u32, to: u32) -> bool {
         if let Some(owner) = self.owner {
             if owner == from {

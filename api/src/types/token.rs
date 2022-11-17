@@ -13,7 +13,7 @@ pub struct Token {
 
 impl Token {
     fn generate() -> String {
-        let uuid = &Uuid::new_v4().to_string()[..8];
+        let uuid = &Uuid::new_v4().to_string()[..7];
         base64::encode(uuid.to_string())
     }
 

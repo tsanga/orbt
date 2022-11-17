@@ -1,6 +1,6 @@
 use async_graphql::*;
 
-use crate::{model::{room::{Room, RoomMember}}, store::DataStore, types::color::Color, auth::action::Action};
+use crate::{model::{room::{Room, RoomMember}}, store::DataStore, types::color::Color, auth::{action::{Action, self}, authority::Authority, actor::Actor}};
 
 #[derive(Default)]
 pub struct RoomQuery;
@@ -14,6 +14,9 @@ impl RoomQuery {
         let store = ctx.data::<DataStore>()?.room_store();
         let room_store = store.read().unwrap();
         let room = room_store.get_room_by_id(id);
+        if let Some(room) = &room {
+            ctx.require_act::<Room>(RoomAction::Get(room.id), &room)?;
+        }
         Ok(room)
     }
 
@@ -22,6 +25,9 @@ impl RoomQuery {
         let room_store = store.read().unwrap();
         let room = room_store.get_room_by_id(room).ok_or::<async_graphql::Error>("Room not found".into())?;
         let member = room.get_member(user).cloned();
+        if let Some(member) = &member {
+            ctx.require_act::<Room>(RoomAction::GetMember(member.user), &room)?;
+        }
         Ok(member)
     }
 }
@@ -63,16 +69,32 @@ impl RoomMutation {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum RoomAction {
     Get(u32),
+    GetMember(u32),
     Create,
 }
 
-impl Action for RoomAction {
-    fn can_act(&self, actor: &crate::auth::actor::Actor) -> bool {
-        match self {
-            RoomAction::Get(_) => actor.is,
-            RoomAction::Create => actor.is_internal(),
+impl Action<Room> for RoomAction {
+    fn can_act(&self, actor: &crate::auth::actor::Actor, room: &Room) -> bool {
+        match actor {
+            Actor::None => false,
+            Actor::Internal => true,
+            Actor::User(user) => {
+                match self {
+                    Self::Create => {
+                        // todo probably add some checks for if they already made a room
+                        true
+                    },
+                    Self::Get(id) => {
+                        room.id == *id && (room.is_member(user.id) || room.is_owner(user.id))
+                    },
+                    Self::GetMember(id) => {
+                        room.id == *id && (room.is_member(user.id) || room.is_owner(user.id))
+                    }
+                }
+            }
         }
     }
 }

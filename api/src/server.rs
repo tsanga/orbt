@@ -1,8 +1,9 @@
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpResponse, HttpRequest};
 use async_graphql::{Schema, EmptySubscription};
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
 
+use crate::auth::actor::Actor;
 use crate::schema::{Query, Mutation};
 use crate::store::DataStore;
 
@@ -27,9 +28,15 @@ impl OrbtData {
 
 pub async fn graphql_root(
     data: web::Data<OrbtData>,
+    data_store: web::Data<DataStore>,
+    http: HttpRequest,
     req: GraphQLRequest,
 ) -> GraphQLResponse {
-    let inner = req.into_inner();
+    let mut inner = req.into_inner();
+
+    let actor = Actor::identify(data_store, http).await;
+    inner.data.insert(actor);
+
     data.schema.execute(inner).await.into()
 }
 

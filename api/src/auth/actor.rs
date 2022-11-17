@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{store::DataStore, model::user::User};
 
-use super::action::Action;
+use super::action::{Action};
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -31,8 +31,8 @@ impl Actor {
         Self::None
     }
 
-    pub fn can_act(&self, action: &impl Action) -> bool {
-        action.can_act(&self)
+    pub fn can_act<M>(&self, action: impl Action<M>, model: &M) -> bool {
+        action.can_act(&self, model)
     }
 
     pub fn is_user_or_internal(&self) -> bool {
