@@ -87,6 +87,9 @@ impl Room {
     }
 
     fn can_pass_remote(&self, from: u32, to: u32) -> bool {
+        if !self.is_member(to) {
+            return false
+        }
         if let Some(owner) = self.owner {
             if owner == from {
                 return true

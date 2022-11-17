@@ -1,5 +1,5 @@
 use actix_web::{web, HttpResponse, HttpRequest};
-use async_graphql::{Schema, EmptySubscription};
+use async_graphql::Schema;
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse, GraphQLSubscription};
 

@@ -1,7 +1,7 @@
 use async_graphql::*;
 use futures::Stream;
 
-use crate::{model::{room::{Room, RoomMember, RoomChatMsg}}, store::DataStore, types::{color::Color, time::Time}, auth::{action::{Action, self}, authority::Authority, actor::Actor}};
+use crate::{model::room::{Room, RoomMember, RoomChatMsg}, store::DataStore, types::{color::Color, time::Time}, auth::{action::Action, authority::Authority, actor::Actor}};
 
 #[derive(Default)]
 pub struct RoomQuery;
@@ -70,6 +70,10 @@ impl RoomMutation {
         room_store.save(room.clone());
 
         Ok(room)
+    }
+
+    async fn send_chat_msg<'ctx>(&self, ctx: &Context<'ctx>, room: u32, msg: String) -> Result<RoomChatMsg> {
+        todo!()   
     }
 }
 
