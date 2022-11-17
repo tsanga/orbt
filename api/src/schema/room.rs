@@ -71,6 +71,10 @@ impl RoomMutation {
 
         Ok(room)
     }
+
+    async fn send_chat_msg<'ctx>(&self, ctx: &Context<'ctx>, room: u32, msg: String) -> Result<RoomChatMsg> {
+        todo!()   
+    }
 }
 
 #[Subscription]
