@@ -18,7 +18,6 @@ RUN echo "fn main(){println!(\"dummy\");}" > src/main.rs
 RUN cargo build
 ADD . .
 RUN touch src/main.rs
-RUN cargo build
 
 ENTRYPOINT [ "cargo" ]
-CMD ["watch", "--why", "-x", "run"]
+CMD ["watch", "--why", "-w", "src", "-x", "run",]
