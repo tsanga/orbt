@@ -13,6 +13,11 @@ const nextConfig = {
     appDir: true,
   },
   webpack: (config, { isServer, dev, dir, supportedBrowsers }) => {
+    config.module.rules.unshift({
+      test: /\.svg$/,
+      use: ["@svgr/webpack"],
+    });
+
     const cssRules = config.module.rules.find(
       (rule) =>
         Array.isArray(rule.oneOf) &&
@@ -42,7 +47,9 @@ const nextConfig = {
       ),
     });
 
-    config.plugins.push(new VanillaExtractPlugin({ outputCss: !isServer }));
+    config.plugins.push(
+      new VanillaExtractPlugin({ outputCss: !isServer, identifiers: "short" })
+    );
 
     return config;
   },
