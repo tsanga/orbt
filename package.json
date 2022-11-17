@@ -1,0 +1,9 @@
+{
+  "name": "orbt",
+  "version": "0.1.0",
+  "repository": "https://github.com/tsanga/orbt",
+  "author": "tsanga",
+  "scripts": {
+    "dev": "docker compose up --build"
+  }
+}
