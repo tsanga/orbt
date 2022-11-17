@@ -27,6 +27,12 @@ async fn main() -> std::io::Result<()> {
             .app_data(Data::new(orbt_data.clone()))
             .app_data(Data::new(data_store.clone()))
             .service(web::resource("/").guard(guard::Post()).to(server::graphql_root))
+            .service(
+                web::resource("/")
+                    .guard(guard::Get())
+                    .guard(guard::Header("upgrade", "websocket"))
+                    .to(server::graphql_ws)
+            )
             .service(web::resource("/").guard(guard::Get()).to(server::graphql_playground))
     })
     .bind(format!("{}:{}", address, port))?

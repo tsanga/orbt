@@ -1,4 +1,8 @@
+use std::time::Duration;
+
 use async_graphql::*;
+use futures::Stream;
+use tokio_stream::StreamExt;
 use crate::{model::user::User, store::DataStore};
 
 #[derive(Default)]
@@ -6,6 +10,9 @@ pub struct UserQuery;
 
 #[derive(Default)]
 pub struct UserMutation;
+
+#[derive(Default)]
+pub struct UserSubscription;
 
 #[Object]
 impl UserQuery {
@@ -33,5 +40,17 @@ impl UserMutation {
         user.name = name;
         user_store.save(user.clone());
         Ok(user)
+    }
+}
+
+#[Subscription]
+impl UserSubscription {
+    async fn integers(&self, step: i32) -> impl Stream<Item = i32> {
+        let mut value = 0;
+        tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(Duration::from_secs(1)))
+            .map(move |_| {
+                value += step;
+                value
+            })
     }
 }
