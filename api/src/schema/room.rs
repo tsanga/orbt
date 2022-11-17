@@ -1,7 +1,7 @@
 use async_graphql::*;
-use futures::Stream;
+use futures::{Stream, StreamExt};
 
-use crate::{model::room::{Room, RoomMember, RoomChatMsg}, store::DataStore, types::{color::Color, time::Time}, auth::{action::Action, authority::Authority, actor::Actor}};
+use crate::{model::room::{Room, RoomMember, RoomChatMsg}, store::DataStore, types::{color::Color, time::Time}, auth::{action::Action, authority::Authority, actor::Actor}, stream::SimpleBroker};
 
 #[derive(Default)]
 pub struct RoomQuery;
@@ -73,21 +73,19 @@ impl RoomMutation {
     }
 
     async fn send_chat_msg<'ctx>(&self, ctx: &Context<'ctx>, room: u32, msg: String) -> Result<RoomChatMsg> {
-        todo!()   
+        let room_chat_msg = RoomChatMsg::new(room, 0, msg, Time::now());
+        SimpleBroker::publish(room_chat_msg.clone());
+        Ok(room_chat_msg)
     }
 }
 
 #[Subscription]
 impl RoomSubscription {
-    async fn chat(&self) -> impl Stream<Item = RoomChatMsg> {
-        async_stream::stream! {
-            yield RoomChatMsg {
-                id: 0,
-                author: 0,
-                msg: "fuck you alex".to_string(),
-                time: Time::now(),
-            }
-        }
+    async fn chat(&self, room: u32) -> impl Stream<Item = RoomChatMsg> {
+        SimpleBroker::<RoomChatMsg>::subscribe().filter(move |event| {
+            let res = event.id == room;
+            async move { res }
+        })
     }
 }
 

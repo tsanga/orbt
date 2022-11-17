@@ -184,6 +184,17 @@ pub struct RoomChatMsg {
     pub time: Time,
 }
 
+impl RoomChatMsg {
+    pub fn new(id: u32, author: u32, msg: String, time: Time) -> Self {
+        Self {
+            id,
+            author,
+            msg,
+            time
+        }
+    }
+}
+
 #[derive(Debug, Clone, SimpleObject)]
 pub struct RoomInvite {
     pub token: Token,

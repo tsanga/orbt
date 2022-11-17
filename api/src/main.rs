@@ -4,6 +4,7 @@ mod schema;
 mod store;
 mod types;
 mod auth;
+mod stream;
 
 pub mod prelude {
     pub use anyhow::{Result, anyhow};
