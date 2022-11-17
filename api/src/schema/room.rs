@@ -1,12 +1,16 @@
 use async_graphql::*;
+use futures::Stream;
 
-use crate::{model::{room::{Room, RoomMember}}, store::DataStore, types::color::Color, auth::{action::{Action, self}, authority::Authority, actor::Actor}};
+use crate::{model::{room::{Room, RoomMember, RoomChatMsg}}, store::DataStore, types::{color::Color, time::Time}, auth::{action::{Action, self}, authority::Authority, actor::Actor}};
 
 #[derive(Default)]
 pub struct RoomQuery;
 
 #[derive(Default)]
 pub struct RoomMutation;
+
+#[derive(Default)]
+pub struct RoomSubscription;
 
 #[Object]
 impl RoomQuery {
@@ -69,6 +73,20 @@ impl RoomMutation {
     }
 }
 
+#[Subscription]
+impl RoomSubscription {
+    async fn chat(&self) -> impl Stream<Item = RoomChatMsg> {
+        async_stream::stream! {
+            yield RoomChatMsg {
+                id: 0,
+                author: 0,
+                msg: "fuck you alex".to_string(),
+                time: Time::now(),
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum RoomAction {
     Get(u32),
@@ -98,3 +116,4 @@ impl Action<Room> for RoomAction {
         }
     }
 }
+

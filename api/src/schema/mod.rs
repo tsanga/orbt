@@ -1,7 +1,15 @@
 pub mod user;
 pub mod room;
 
+use std::time::Duration;
+
 use async_graphql::*;
+use futures::Stream;
+use tokio_stream::StreamExt;
+
+use crate::{model::room::RoomChatMsg, types::time::Time};
+
+use self::{room::RoomSubscription, user::UserSubscription};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -10,6 +18,9 @@ pub struct Query;
 
 #[derive(Default)]
 pub struct Mutation;
+
+#[derive(MergedSubscription, Default)]
+pub struct Subscription(RoomSubscription, UserSubscription);
 
 #[Object]
 impl Query {
