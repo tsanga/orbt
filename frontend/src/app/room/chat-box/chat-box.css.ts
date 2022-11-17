@@ -63,5 +63,5 @@ export const footer = style({
 export const planets = style({
   position: "absolute",
   transform: "scale(0.85) translate(-35%, -10%)",
-  opacity: 0.5,
+  opacity: 0.35,
 });
