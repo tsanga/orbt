@@ -6,9 +6,12 @@ services:
       - "8080:8080"
     volumes:
       - "./api:/app/"
+      - "api_target:/app/target"
   frontend:
     build: frontend
     ports:
       - "3000:3000"
     volumes:
       - "./frontend:/app/"
+volumes:
+  api_target:

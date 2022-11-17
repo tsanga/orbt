@@ -21,4 +21,4 @@ RUN touch src/main.rs
 RUN cargo build
 
 ENTRYPOINT [ "cargo" ]
-CMD ["watch", "-s", "cargo run"]
+CMD ["watch", "-w", "src", "-x", "run"]
