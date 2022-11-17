@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "npx patch-package"
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@next/font": "^13.0.3",
@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@vanilla-extract/next-plugin": "^2.1.1",
-    "eslint-config-next": "^13.0.3"
+    "eslint-config-next": "^13.0.3",
+    "patch-package": "^6.5.0"
   }
 }
