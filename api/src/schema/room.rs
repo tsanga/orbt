@@ -1,7 +1,7 @@
 use async_graphql::*;
 use futures::Stream;
 
-use crate::{model::{room::{Room, RoomMember, RoomChatMsg}}, store::DataStore, types::{color::Color, time::Time}, auth::{action::{Action, self}, authority::Authority, actor::Actor}};
+use crate::{model::room::{Room, RoomMember, RoomChatMsg}, store::DataStore, types::{color::Color, time::Time}, auth::{action::Action, authority::Authority, actor::Actor}};
 
 #[derive(Default)]
 pub struct RoomQuery;

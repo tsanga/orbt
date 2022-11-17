@@ -1,13 +1,6 @@
 pub mod user;
 pub mod room;
-
-use std::time::Duration;
-
 use async_graphql::*;
-use futures::Stream;
-use tokio_stream::StreamExt;
-
-use crate::{model::room::RoomChatMsg, types::time::Time};
 
 use self::{room::RoomSubscription, user::UserSubscription};
 
