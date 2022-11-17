@@ -9,6 +9,8 @@ export const chatContainer = style({
   display: "flex",
   flexDirection: "column",
   flex: 1,
+  position: "relative",
+  overflow: "hidden",
 });
 
 export const chatHeader = style({
@@ -18,6 +20,8 @@ export const chatHeader = style({
   alignItems: "center",
   userSelect: "none",
   cursor: "default",
+  position: "relative",
+  zIndex: 9,
 });
 
 export const chatHeaderHeading = style([
@@ -48,8 +52,17 @@ export const footer = style({
   padding: vars.spacing.md,
   borderTop: vars.border.solid,
   borderColor: vars.color.border.primary,
+  background: vars.color.background.accentPrimary,
   minHeight: 70,
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
+  position: "relative",
+  zIndex: 9,
+});
+
+export const planets = style({
+  position: "absolute",
+  transform: "scale(0.85) translate(-35%, -10%)",
+  opacity: 0.5,
 });

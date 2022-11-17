@@ -22,6 +22,6 @@ export const participantSkeleton = style([
     borderRadius: vars.border.radius.round,
     marginBottom: vars.spacing.xs,
     border: vars.border.solid,
-    borderColor: vars.color.border.primary,
+    borderColor: "transparent",
   },
 ]);
