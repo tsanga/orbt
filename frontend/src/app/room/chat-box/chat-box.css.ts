@@ -53,7 +53,6 @@ export const footer = style({
   borderTop: vars.border.solid,
   borderColor: vars.color.border.primary,
   background: vars.color.background.accentPrimary,
-  minHeight: 70,
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
