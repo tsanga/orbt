@@ -130,7 +130,7 @@ impl Action<Room> for RoomAction {
                         room.is_member(user.id)
                     },
                     Self::GetMember(id) => {
-                        room.is_member(user.id)
+                        room.is_member(user.id) && room.is_member(*id)
                     },
                 }
             }
