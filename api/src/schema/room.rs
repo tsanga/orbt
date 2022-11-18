@@ -19,7 +19,7 @@ impl RoomQuery {
         let room_store = store.read().unwrap();
         let room = room_store.get_room_by_id(id);
         if let Some(room) = &room {
-            ctx.require_act::<Room>(RoomAction::Get(room.id), &room)?;
+            ctx.require_act(RoomAction::Get, &room)?;
         }
         Ok(room)
     }
@@ -30,7 +30,7 @@ impl RoomQuery {
         let room = room_store.get_room_by_id(room).ok_or::<async_graphql::Error>("Room not found".into())?;
         let member = room.get_member(user).cloned();
         if let Some(member) = &member {
-            ctx.require_act::<Room>(RoomAction::GetMember(member.user), &room)?;
+            ctx.require_act(RoomAction::GetMember(member.user), &room)?;
         }
         Ok(member)
     }
@@ -42,6 +42,7 @@ impl RoomMutation {
         let store = ctx.data::<DataStore>()?.room_store();
         let mut room_store = store.write().unwrap();
         let room = room_store.new_room()?;
+        ctx.require_act(RoomAction::Create, &room)?;
         Ok(room)
     }
 
@@ -72,8 +73,19 @@ impl RoomMutation {
         Ok(room)
     }
 
-    async fn send_chat_msg<'ctx>(&self, ctx: &Context<'ctx>, room: u32, msg: String) -> Result<RoomChatMsg> {
-        let room_chat_msg = RoomChatMsg::new(room, 0, msg, Time::now());
+    async fn send_chat_msg<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, msg: String) -> Result<RoomChatMsg> {
+        let store = ctx.data::<DataStore>()?;
+        let room_store_lock = store.room_store();
+        let room_store = room_store_lock.write().unwrap();
+        let Some(mut room) = room_store.get_room_by_id(room_id) else { return Err("Room not found".into()) };
+
+        ctx.require_act(RoomAction::SendChat, &room)?;
+
+        let room_chat_msg = RoomChatMsg::new(room_id, 0, msg, Time::now());
+
+        room.add_chat_msg(room_chat_msg.clone());
+        room_store.save(room);
+
         SimpleBroker::publish(room_chat_msg.clone());
         Ok(room_chat_msg)
     }
@@ -81,19 +93,26 @@ impl RoomMutation {
 
 #[Subscription]
 impl RoomSubscription {
-    async fn chat(&self, room: u32) -> impl Stream<Item = RoomChatMsg> {
-        SimpleBroker::<RoomChatMsg>::subscribe().filter(move |event| {
-            let res = event.id == room;
+    async fn chat<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32) -> Result<impl Stream<Item = RoomChatMsg>> {
+        let store = ctx.data::<DataStore>()?;
+        let room_store_lock = store.room_store();
+        let room_store = room_store_lock.read().unwrap();
+        let Some(room) = room_store.get_room_by_id(room_id) else { return Err("Room not found".into()) };
+        ctx.require_act(RoomAction::SubscribeChat, &room)?;
+        Ok(SimpleBroker::<RoomChatMsg>::subscribe().filter(move |event| {
+            let res = event.id == room_id;
             async move { res }
-        })
+        }))
     }
 }
 
 #[derive(Debug, Clone)]
 pub enum RoomAction {
-    Get(u32),
-    GetMember(u32),
+    Get, // room id
+    GetMember(u32), // member user id
     Create,
+    SendChat,
+    SubscribeChat,
 }
 
 impl Action<Room> for RoomAction {
@@ -107,12 +126,12 @@ impl Action<Room> for RoomAction {
                         // todo probably add some checks for if they already made a room
                         true
                     },
-                    Self::Get(id) => {
-                        room.id == *id && (room.is_member(user.id) || room.is_owner(user.id))
+                    Self::Get | Self::SendChat | Self::SubscribeChat => {
+                        room.is_member(user.id)
                     },
                     Self::GetMember(id) => {
-                        room.id == *id && (room.is_member(user.id) || room.is_owner(user.id))
-                    }
+                        room.is_member(user.id)
+                    },
                 }
             }
         }

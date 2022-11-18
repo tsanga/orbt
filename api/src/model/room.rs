@@ -158,6 +158,10 @@ impl Room {
         let token = token.to_string();
         self.invites.iter().any(|i| i.token.check(&token))
     }
+
+    pub fn add_chat_msg(&mut self, chat: RoomChatMsg) {
+        self.messages.push(chat);
+    }
 }
 
 #[derive(Debug, Clone, SimpleObject)]
