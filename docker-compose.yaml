@@ -8,10 +8,10 @@ services:
       - "./api:/app/"
       - "api_target:/app/target"
   frontend:
-    build: frontend
+    build: web
     ports:
       - "3000:3000"
     volumes:
-      - "./frontend:/app/"
+      - "./web:/app/"
 volumes:
   api_target:
