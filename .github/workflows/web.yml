@@ -1,0 +1,23 @@
+name: web
+on:
+  pull_request:
+    paths:
+      - "web/**"
+  # might make sense to remove the push trigger later on if we start approaching free limit
+  push:
+jobs:
+  test-units-web:
+    name: "unit tests: web"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
+      - name: Install dependencies
+        run: yarn install
+        working-directory: ./web
+      - name: Run tests
+        run: yarn test
+        working-directory: ./web
