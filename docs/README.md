@@ -1,7 +1,7 @@
 <p align="center">
 	<picture>
-		<source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tsanga/orbt/master/docs/_assets/logo-long-w.png" width="700">
-		<img src="https://raw.githubusercontent.com/tsanga/orbt/master/docs/_assets/logo-long-b.png" width="700">
+		<source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tsanga/orbt/master/docs/_assets/logo-long-w.png" width="300">
+		<img src="https://raw.githubusercontent.com/tsanga/orbt/master/docs/_assets/logo-long-b.png" width="300">
 	</picture>
 </p>
 
