@@ -1,7 +1,7 @@
 use async_graphql::*;
 use futures::{Stream, StreamExt};
 
-use crate::{model::room::{Room, RoomMember, RoomChatMsg}, store::DataStore, types::{color::Color, time::Time}, auth::{action::Action, authority::Authority, actor::Actor}, stream::SimpleBroker};
+use crate::{model::{room::{Room, RoomMember, RoomChatMsg, RoomMemberUpdate, RoomRemoteUpdate}, user::User}, store::DataStore, types::{color::Color, time::Time}, auth::{action::Action, authority::Authority, actor::Actor}, stream::OrbtStreamBroker};
 
 #[derive(Default)]
 pub struct RoomQuery;
@@ -86,21 +86,102 @@ impl RoomMutation {
         room.add_chat_msg(room_chat_msg.clone());
         room_store.save(room);
 
-        SimpleBroker::publish(room_chat_msg.clone());
+        OrbtStreamBroker::publish(room_chat_msg.clone());
         Ok(room_chat_msg)
+    }
+
+    async fn pass_remote<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, to_user: u32) -> Result<Room> {
+        let store = ctx.data::<DataStore>()?;
+        let room_store_lock = store.room_store();
+        let room_store = room_store_lock.write().unwrap();
+        let Some(mut room) = room_store.get_room_by_id(room_id) else { return Err("Room not found".into()) };
+
+        let actor = ctx.require_act(RoomAction::PassRemote(to_user), &room)?;
+        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+        if !room.is_member(user.id) { return Err("You are not a member of that room".into()) }
+        if !room.is_member(to_user) { return Err("That user is not a member of the room".into()) }
+        let from = room.remote;
+        room.pass_remote(user.id, to_user)?;
+        room_store.save(room.clone());
+
+        let room_remote_update = RoomRemoteUpdate::new(room.id, from, to_user);
+        OrbtStreamBroker::publish(room_remote_update);
+
+        Ok(room)
+    }
+
+    async fn join<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, invite_token: String, color: Option<Color>) -> Result<Room> {
+        let store = ctx.data::<DataStore>()?;
+        let room_store_lock = store.room_store();
+        let room_store = room_store_lock.write().unwrap();
+        let Some(mut room) = room_store.get_room_by_id(room_id) else { return Err("Room not found".into()) };
+
+        if !room.check_invite(&invite_token) { return Err("Invalid invite".into()) }
+        if room.members.len() >= crate::model::room::MAX_ROOM_SIZE { return Err("Room is full".into()) }
+        let actor = ctx.require_act(RoomAction::Join(invite_token.clone()), &room)?;
+        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+        let room_member = room.join(&user, color)?;
+        room_store.save(room.clone());
+
+        let room_member_update = RoomMemberUpdate::new_join(room.id, room_member, user);
+        OrbtStreamBroker::publish(room_member_update);
+
+        Ok(room)
+    }
+
+    async fn leave<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32) -> Result<User> {
+        let store = ctx.data::<DataStore>()?;
+        let room_store_lock = store.room_store();
+        let room_store = room_store_lock.write().unwrap();
+        let Some(mut room) = room_store.get_room_by_id(room_id) else { return Err("Room not found".into()) };
+
+        if room.members.len() >= crate::model::room::MAX_ROOM_SIZE { return Err("Room is full".into()) }
+        let actor = ctx.require_act(RoomAction::Leave, &room)?;
+        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+        let room_member = room.leave(&user)?;
+        room_store.save(room.clone());
+
+        let room_member_update = RoomMemberUpdate::new_leave(room.id, room_member, user.clone());
+        OrbtStreamBroker::publish(room_member_update);
+
+        Ok(user)
     }
 }
 
 #[Subscription]
 impl RoomSubscription {
-    async fn chat<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32) -> Result<impl Stream<Item = RoomChatMsg>> {
+    async fn room_chat<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32) -> Result<impl Stream<Item = RoomChatMsg>> {
         let store = ctx.data::<DataStore>()?;
         let room_store_lock = store.room_store();
         let room_store = room_store_lock.read().unwrap();
         let Some(room) = room_store.get_room_by_id(room_id) else { return Err("Room not found".into()) };
         ctx.require_act(RoomAction::SubscribeChat, &room)?;
-        Ok(SimpleBroker::<RoomChatMsg>::subscribe().filter(move |event| {
+        Ok(OrbtStreamBroker::<RoomChatMsg>::subscribe().filter(move |event| {
             let res = event.id == room_id;
+            async move { res }
+        }))
+    }
+
+    async fn room_members<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32) -> Result<impl Stream<Item = RoomMemberUpdate>> {
+        let store = ctx.data::<DataStore>()?;
+        let room_store_lock = store.room_store();
+        let room_store = room_store_lock.read().unwrap();
+        let Some(room) = room_store.get_room_by_id(room_id) else { return Err("Room not found".into()) };
+        ctx.require_act(RoomAction::SubscribeMembers, &room)?;
+        Ok(OrbtStreamBroker::<RoomMemberUpdate>::subscribe().filter(move |event| {
+            let res = event.room == room_id;
+            async move { res }
+        }))
+    }
+
+    async fn room_remote<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32) -> Result<impl Stream<Item = RoomRemoteUpdate>> {
+        let store = ctx.data::<DataStore>()?;
+        let room_store_lock = store.room_store();
+        let room_store = room_store_lock.read().unwrap();
+        let Some(room) = room_store.get_room_by_id(room_id) else { return Err("Room not found".into()) };
+        ctx.require_act(RoomAction::SubscribeRemote, &room)?;
+        Ok(OrbtStreamBroker::<RoomRemoteUpdate>::subscribe().filter(move |event| {
+            let res = event.room == room_id;
             async move { res }
         }))
     }
@@ -108,11 +189,16 @@ impl RoomSubscription {
 
 #[derive(Debug, Clone)]
 pub enum RoomAction {
-    Get, // room id
-    GetMember(u32), // member user id
+    Get,
+    GetMember(u32), // u32: member user id
     Create,
     SendChat,
+    PassRemote(u32), // u32: to user
+    Join(String), // string: invite token
+    Leave,
     SubscribeChat,
+    SubscribeMembers,
+    SubscribeRemote,
 }
 
 impl Action<Room> for RoomAction {
@@ -126,12 +212,18 @@ impl Action<Room> for RoomAction {
                         // todo probably add some checks for if they already made a room
                         true
                     },
-                    Self::Get | Self::SendChat | Self::SubscribeChat => {
+                    Self::Get | Self::SendChat | Self::SubscribeChat | Self::SubscribeMembers | Self::SubscribeRemote | Self::Leave => {
                         room.is_member(user.id)
                     },
                     Self::GetMember(id) => {
                         room.is_member(user.id) && room.is_member(*id)
                     },
+                    Self::PassRemote(to_user_id) => {
+                        room.can_pass_remote(user.id, *to_user_id)
+                    }, 
+                    Self::Join(token) => {
+                        room.check_invite(token) && room.members.len() < crate::model::room::MAX_ROOM_SIZE
+                    }
                 }
             }
         }

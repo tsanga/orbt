@@ -1,7 +1,7 @@
-use async_graphql::{SimpleObject, Error};
+use async_graphql::{SimpleObject, Error, Enum, ComplexObject, Context};
 use chrono::{Duration, Utc};
 
-use crate::types::{time::Time, token::Token, color::Color};
+use crate::{types::{time::Time, token::Token, color::Color}, auth::authority::Authority};
 
 use super::user::User;
 
@@ -10,6 +10,7 @@ pub const MAX_ROOM_NAME_LENGTH: usize = 20;
 pub const INVITE_EXPIRY_MINUTES: usize = 5;
 
 #[derive(Debug, Clone, SimpleObject)]
+#[graphql(complex)]
 pub struct Room {
     pub id: u32,
     pub name: Option<String>,
@@ -20,6 +21,18 @@ pub struct Room {
     //#[graphql(skip)] TODO: uncomment
     pub create_token: Token,
     pub invites: Vec<RoomInvite>,
+}
+
+#[ComplexObject]
+impl Room {
+    async fn get_my_member<'ctx>(&self, ctx: &Context<'ctx>) -> async_graphql::Result<RoomMember> {
+        let user = ctx.actor_user()?;
+        if let Some(member) = self.members.iter().find(|m| m.user == user.id) {
+            return async_graphql::Result::Ok(member.clone())
+        } else {
+            return async_graphql::Result::Err("You are not a member of this room".into())
+        }
+    }
 }
 
 impl Room {
@@ -66,10 +79,10 @@ impl Room {
         Ok(member)
     }
 
-    pub fn leave(&mut self, user: &User) -> Result<(), Error> {
+    pub fn leave(&mut self, user: &User) -> Result<RoomMember, Error> {
         if let Some(index) = self.members.iter().position(|m| m.user == user.id) {
-            self.members.remove(index);
-            return Ok(());
+            let room_member = self.members.remove(index);
+            return Ok(room_member);
         }
         Err("User not in room".into())
     }
@@ -86,7 +99,7 @@ impl Room {
         }
     }
 
-    fn can_pass_remote(&self, from: u32, to: u32) -> bool {
+    pub fn can_pass_remote(&self, from: u32, to: u32) -> bool {
         if !self.is_member(to) {
             return false
         }
@@ -208,11 +221,62 @@ pub struct RoomInvite {
 impl RoomInvite {
     pub fn new(inviter: u32) -> Self {
         let now = Utc::now().timestamp_millis() as u128;
-        let duration = Duration::minutes(INVITE_EXPIRY_MINUTES as i64).num_milliseconds() as u128;
+        let duration = Duration::minutes(crate::model::room::INVITE_EXPIRY_MINUTES as i64).num_milliseconds() as u128;
         let expiry = Time::from(now + duration);
         Self {
             token: Token::new_with_expiry(expiry),
             inviter,
+        }
+    }
+}
+
+#[derive(Debug, Enum, PartialEq, Eq, Clone, Copy)]
+pub enum RoomMemberUpdateType {
+    Join,
+    Leave,
+}
+
+#[derive(Debug, SimpleObject, Clone)]
+pub struct RoomMemberUpdate {
+    pub room: u32,
+    pub update_type: RoomMemberUpdateType,
+    pub room_member: RoomMember,
+    pub user: User,
+}
+
+impl RoomMemberUpdate {
+    pub fn new_join(room: u32, room_member: RoomMember, user: User) -> Self {
+        Self {
+            room,
+            update_type: RoomMemberUpdateType::Join,
+            room_member,
+            user,
+        }
+    }
+
+    pub fn new_leave(room: u32, room_member: RoomMember, user: User) -> Self {
+        Self {
+            room,
+            update_type: RoomMemberUpdateType::Leave,
+            room_member,
+            user,
+        }
+    }
+}
+
+#[derive(Debug, SimpleObject, Clone)]
+pub struct RoomRemoteUpdate {
+    pub room: u32,
+    pub from: Option<u32>,
+    pub to: u32,
+}
+
+impl RoomRemoteUpdate {
+    pub fn new(room: u32, from: Option<u32>, to: u32) -> Self {
+        Self {
+            room,
+            from,
+            to
         }
     }
 }

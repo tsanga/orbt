@@ -45,9 +45,9 @@ impl<T: Sync + Send + Clone + 'static> Stream for BrokerStream<T> {
 }
 
 /// A simple broker based on memory
-pub struct SimpleBroker<T>(PhantomData<T>);
+pub struct OrbtStreamBroker<T>(PhantomData<T>);
 
-impl<T: Sync + Send + Clone + 'static> SimpleBroker<T> {
+impl<T: Sync + Send + Clone + 'static> OrbtStreamBroker<T> {
     /// Publish a message that all subscription streams can receive.
     pub fn publish(msg: T) {
         with_senders::<T, _, _>(|senders| {
