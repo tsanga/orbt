@@ -13,7 +13,7 @@ pub trait Authority {
 
 impl Authority for Context<'_> {
     fn require_act<M>(&self, action: impl Action<M>, model: &M) -> Result<Actor, Error> {
-        let actor = self.data::<Actor>()?;
+        let Ok(actor) = self.data::<Actor>() else { return Err("Not authenticated".into()) };
         if actor.can_act::<M>(action.clone(), model) {
             Ok(actor.clone())
         } else {

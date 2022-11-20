@@ -42,7 +42,7 @@ impl RoomMutation {
         let store = ctx.data::<DataStore>()?.room_store();
         let mut room_store = store.write().unwrap();
         let room = room_store.new_room()?;
-        ctx.require_act(RoomAction::Create, &room)?;
+        //ctx.require_act(RoomAction::Create, &room)?;
         Ok(room)
     }
 
@@ -191,7 +191,7 @@ impl RoomSubscription {
 pub enum RoomAction {
     Get,
     GetMember(u32), // u32: member user id
-    Create,
+    //Create,
     SendChat,
     PassRemote(u32), // u32: to user
     Join(String), // string: invite token
@@ -208,10 +208,6 @@ impl Action<Room> for RoomAction {
             Actor::Internal => true,
             Actor::User(user) => {
                 match self {
-                    Self::Create => {
-                        // todo probably add some checks for if they already made a room
-                        true
-                    },
                     Self::Get | Self::SendChat | Self::SubscribeChat | Self::SubscribeMembers | Self::SubscribeRemote | Self::Leave => {
                         room.is_member(user.id)
                     },
