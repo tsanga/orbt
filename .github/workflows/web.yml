@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "web/**"
+      - ".github/workflows/web.yml"
   # might make sense to remove the push trigger later on if we start approaching free limit
   push:
     paths:

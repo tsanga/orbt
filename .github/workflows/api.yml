@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "api/**"
+      - ".github/workflows/api.yml"
   push:
     paths:
       - "api/**"
