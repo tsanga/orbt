@@ -7,6 +7,7 @@ on:
   push:
     paths:
       - "web/**"
+      - ".github/workflows/web.yml"
 jobs:
   test-units-web:
     name: "unit tests: web"
