@@ -6,6 +6,7 @@ on:
   push:
     paths:
       - "api/**"
+      - ".github/workflows/api.yml"
 jobs:
   cargo:
     name: "api: cargo check"
@@ -26,14 +27,12 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          ./target
-          ~/.cargo
-        key: debug-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('Cargo.lock') }}
-        restore-keys: |
-          debug-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml') }}-
-          debug-${{ runner.os }}-
+          ./api/target/
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('./api/Cargo.lock') }}
     - name: Cargo Check
-      uses: actions-rs/cargo@v1
-      with:
-        command: check
-        toolchain: 1.65.0
+      working-directory: ./api
+      run: cargo check
