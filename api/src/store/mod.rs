@@ -50,7 +50,7 @@ impl DataStoreInner {
 
 #[cfg(test)]
 mod tests {
-    use crate::model::user::User;
+    use crate::model::{user::User, room::Room};
 
     use super::*;
 
@@ -62,5 +62,15 @@ mod tests {
         let user_store = user_store_lock.write().unwrap();
         user_store.save(new_user);
         assert!(user_store.users.read().unwrap().contains_key(&0u32));
+    }
+
+    #[test]
+    fn does_store_room() {
+        let data_store = DataStore::new();
+        let new_room = Room::new(0);
+        let room_store_lock = data_store.room_store();
+        let room_store = room_store_lock.write().unwrap();
+        room_store.save(new_room);
+        assert!(room_store.rooms.read().unwrap().contains_key(&0u32));
     }
 }
