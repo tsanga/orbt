@@ -9,8 +9,7 @@
 
 [![License][mit-badge]][mit-url]
 [![CI: web][ci-web-badge]][ci-web-url]
-
-<!--[![api][ci-api-badge]][ci-api-url] -->
+[![api][ci-api-badge]][ci-api-url]
 
 [mit-badge]: https://img.shields.io/badge/license-MIT-indigo.svg
 [mit-url]: LICENSE
