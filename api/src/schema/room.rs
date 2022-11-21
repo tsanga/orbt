@@ -1,7 +1,7 @@
 use async_graphql::*;
 use futures::{Stream, StreamExt};
 
-use crate::{model::{room::{Room, RoomMember, RoomChatMsg, RoomMemberUpdate, RoomRemoteUpdate}, user::User}, store::DataStore, types::{color::Color, time::Time}, auth::{action::Action, authority::Authority, actor::Actor}, stream::OrbtStreamBroker};
+use crate::{model::{room::{Room, RoomMember, RoomChatMsg, RoomMemberUpdate, RoomRemoteUpdate}, user::User}, store::DataStore, types::{color::Color, time::Time, token::Token}, auth::{action::Action, authority::Authority, actor::Actor}, stream::OrbtStreamBroker};
 
 #[derive(Default)]
 pub struct RoomQuery;
@@ -146,6 +146,19 @@ impl RoomMutation {
 
         Ok(user)
     }
+
+    async fn create_invite<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32) -> Result<Token> {
+        let store = ctx.data::<DataStore>()?;
+        let room_store_lock = store.room_store();
+        let room_store = room_store_lock.write().unwrap();
+        let Some(mut room) = room_store.get_room_by_id(room_id) else { return Err("Room not found".into()) };
+
+        let actor = ctx.require_act(RoomAction::CreateInvite, &room)?;
+        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+        let room_invite = room.create_invite(user.id)?;
+        room_store.save(room);
+        Ok(room_invite.token.clone())
+    }
 }
 
 #[Subscription]
@@ -196,6 +209,7 @@ pub enum RoomAction {
     PassRemote(u32), // u32: to user
     Join(String), // string: invite token
     Leave,
+    CreateInvite,
     SubscribeChat,
     SubscribeMembers,
     SubscribeRemote,
@@ -219,6 +233,9 @@ impl Action<Room> for RoomAction {
                     }, 
                     Self::Join(token) => {
                         room.check_invite(token) && room.members.len() < crate::model::room::MAX_ROOM_SIZE
+                    },
+                    Self::CreateInvite => {
+                        room.is_member(user.id) && !room.invites.iter().any(|i| i.inviter == user.id && i.token.is_valid())
                     }
                 }
             }
