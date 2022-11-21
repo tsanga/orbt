@@ -159,6 +159,19 @@ impl RoomMutation {
         room_store.save(room);
         Ok(room_invite.token.clone())
     }
+
+    async fn revoke_invite<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, invite: String) -> Result<Room> {
+        let store = ctx.data::<DataStore>()?;
+        let room_store_lock = store.room_store();
+        let room_store = room_store_lock.write().unwrap();
+        let Some(mut room) = room_store.get_room_by_id(room_id) else { return Err("Room not found".into()) };
+
+        ctx.require_act(RoomAction::RevokeInvite(invite.clone()), &room)?;
+        room.revoke_invite(&invite)?;
+        room_store.save(room.clone());
+
+        Ok(room)
+    }
 }
 
 #[Subscription]
@@ -210,6 +223,7 @@ pub enum RoomAction {
     Join(String), // string: invite token
     Leave,
     CreateInvite,
+    RevokeInvite(String), // string: invite token
     SubscribeChat,
     SubscribeMembers,
     SubscribeRemote,
@@ -236,6 +250,13 @@ impl Action<Room> for RoomAction {
                     },
                     Self::CreateInvite => {
                         room.is_member(user.id) && !room.invites.iter().any(|i| i.inviter == user.id && i.token.is_valid())
+                    },
+                    Self::RevokeInvite(token) => {
+                        let invite_exists = room.invites.iter().any(|i| i.token.check(&token));
+                        let is_member_or_owner = room.is_member(user.id) || room.is_owner(user.id);
+                        let is_owner_or_created_invite = room.is_owner(user.id) || room.invites.iter().any(|i| i.inviter == user.id);
+                        
+                        invite_exists && is_member_or_owner && is_owner_or_created_invite
                     }
                 }
             }
