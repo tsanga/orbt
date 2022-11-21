@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - "api/**"
+  push:
+    paths:
+      - "api/**"
 jobs:
   cargo:
     name: "api: cargo check"
