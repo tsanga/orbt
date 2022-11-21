@@ -31,7 +31,8 @@ impl UserQuery {
 
 #[Object]
 impl UserMutation {
-    async fn create<'ctx>(&self, ctx: &Context<'ctx>, name: String) -> Result<User> {
+    async fn create<'ctx>(&self, ctx: &Context<'ctx>, name: Option<String>) -> Result<User> {
+        let name = name.unwrap_or("".to_string());
         let store = ctx.data::<DataStore>()?.user_store();
         let mut user_store = store.write().unwrap();
         let user = user_store.new_user(name)?;
