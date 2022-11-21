@@ -3,11 +3,15 @@ on:
   pull_request:
     paths:
       - "web/**"
+      - ".github/workflows/web.yml"
   # might make sense to remove the push trigger later on if we start approaching free limit
   push:
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
 jobs:
   test-units-web:
-    name: "unit tests: web"
+    name: "web: unit tests"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

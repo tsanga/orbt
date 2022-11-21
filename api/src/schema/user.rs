@@ -39,6 +39,7 @@ impl UserMutation {
         Ok(user)
     }
 
+    
     async fn set_name<'ctx>(&self, ctx: &Context<'ctx>, id: u32, name: String) -> Result<User> {
         let store = ctx.data::<DataStore>()?.user_store();
         let user_store = store.write().unwrap();

@@ -4,6 +4,7 @@ use uuid::Uuid;
 use super::time::Time;
 
 #[derive(Debug, Serialize, Deserialize, Clone, SimpleObject, InputObject)]
+#[graphql(input_name = "TokenInput")]
 pub struct Token {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
