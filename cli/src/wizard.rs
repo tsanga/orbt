@@ -3,6 +3,20 @@ use crate::server::Config;
 use console::{style, Style};
 use dialoguer::{theme::ColorfulTheme, Input, Select};
 
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub static ref THEME: ColorfulTheme = ColorfulTheme {
+        values_style: Style::new().magenta().dim(),
+        prompt_prefix: style("?".to_owned()).magenta(),
+        prompt_suffix: style("›".to_owned()).magenta().dim(),
+        success_prefix: style("✔".to_owned()).magenta(),
+        active_item_prefix: style("❯".to_owned()).magenta().dim(),
+        active_item_style: Style::new().magenta(),
+        ..ColorfulTheme::default()
+    };
+}
+
 impl Default for Config {
     fn default() -> Self {
         Config {
@@ -13,23 +27,13 @@ impl Default for Config {
 }
 
 pub fn init() -> Result<Option<Config>> {
-    let theme = ColorfulTheme {
-        values_style: Style::new().magenta().dim(),
-        prompt_prefix: style("?".to_owned()).magenta(),
-        prompt_suffix: style("›".to_owned()).magenta().dim(),
-        success_prefix: style("✔".to_owned()).magenta(),
-        active_item_prefix: style("❯".to_owned()).magenta().dim(),
-        active_item_style: Style::new().magenta(),
-        ..ColorfulTheme::default()
-    };
-
-    let _room_name: String = Input::with_theme(&theme)
+    let _room_name: String = Input::with_theme(&*THEME)
         .with_prompt("What should your room be called?")
         .default("Cool Room".parse()?)
         .interact()
         .unwrap();
 
-    let configure = Select::with_theme(&theme)
+    let configure = Select::with_theme(&*THEME)
         .with_prompt("Configure orbt internals?")
         .default(0)
         .item("no  (default configuration)")
