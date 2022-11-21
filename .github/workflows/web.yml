@@ -10,7 +10,7 @@ on:
       - ".github/workflows/web.yml"
 jobs:
   test-units-web:
-    name: "unit tests: web"
+    name: "web: unit tests"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
