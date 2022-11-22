@@ -5,7 +5,7 @@ use crate::{store::DataStore, model::user::User};
 
 use super::action::{Action};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Actor {
     None,
@@ -14,18 +14,23 @@ pub enum Actor {
 }
 
 impl Actor {
-    pub async fn identify(data_store: web::Data<DataStore>, request: HttpRequest) -> Self {
-        let data_store = &data_store.into_inner();
+    pub fn identify(data_store: web::Data<DataStore>, request: HttpRequest) -> Self {
         if let Some(identifier) = request.headers().get("Authorization") {
             let identifier = identifier.to_str().unwrap();
-            if identifier == option_env!("API_TOKEN").unwrap_or("penis") {
-                return Self::Internal;
-            } else {
-                let user_store_lock = data_store.user_store().clone();
-                let user_store = user_store_lock.read().unwrap();
-                if let Some(user) = user_store.get_user_by_token(identifier) {
-                    return Self::User(user);
-                }
+            return Self::identify_with_token(data_store, identifier)
+        }
+        Self::None
+    }
+
+    pub fn identify_with_token(data_store: web::Data<DataStore>, identifier: &str) -> Self {
+        if identifier == option_env!("API_TOKEN").unwrap_or("ORBT_INTERNAL") {
+            return Self::Internal;
+        } else {
+            let data_store = &data_store.into_inner();
+            let user_store_lock = data_store.user_store().clone();
+            let user_store = user_store_lock.read().unwrap();
+            if let Some(user) = user_store.get_user_by_token(identifier) {
+                return Self::User(user);
             }
         }
         Self::None

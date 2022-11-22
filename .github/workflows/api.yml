@@ -1,0 +1,44 @@
+name: api
+on:
+  pull_request:
+    paths:
+      - "api/**"
+      - ".github/workflows/api.yml"
+  push:
+    paths:
+      - "api/**"
+      - ".github/workflows/api.yml"
+jobs:
+  cargo:
+    name: "api: cargo check"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./api
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Cargo Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: 1.65.0
+        override: true
+
+    - name: Cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ./api/target/
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('./api/Cargo.lock') }}
+    - name: Cargo Check
+      uses: actions-rs/cargo@v1
+      with:
+        toolchain: 1.65.0
+        command: check
+        args: --manifest-path ./api/Cargo.toml
