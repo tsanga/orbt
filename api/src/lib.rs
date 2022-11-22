@@ -1,5 +1,3 @@
-#![feature(let_else)]
-
 mod auth;
 mod model;
 mod schema;
