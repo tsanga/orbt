@@ -12,7 +12,6 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 lazy_static! {
-    /// This is an example for using doc comment attributes
     static ref CHECK: String = style("✔".to_string()).magenta().to_string();
 }
 
