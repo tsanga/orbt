@@ -1,8 +1,11 @@
+#![feature(let_else)]
+
 mod auth;
 mod model;
 mod schema;
 mod server;
 mod store;
+mod stream;
 mod types;
 
 use std::future::Future;
