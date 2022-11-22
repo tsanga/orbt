@@ -1,5 +1,5 @@
 [package]
-name = "cli"
+name = "orbt-cli"
 version = "0.1.0"
 edition = "2021"
 authors = ["jonahseguin", "bizarre"]
@@ -12,6 +12,15 @@ thiserror = "1.0"
 anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-indicatif = "0.17.1"
 console = "0.15.2"
-subprocess = "0.2.9"
+dialoguer = "0.10.2"
+indicatif = "0.17.2"
+futures = "0.3"
+fork = "0.1.20"
+api = { path = "../api" }
+tokio = { version = "1", features = ["full"] }
+nix = { version = "0.25.0", features = ["process"] }
+lazy_static = "1.4.0"
+
+[build-dependencies]
+anyhow = "1.0"

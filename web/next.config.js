@@ -12,6 +12,7 @@ const nextConfig = {
   experimental: {
     appDir: true,
   },
+  output: "standalone",
   webpack: (config, { isServer, dev, dir, supportedBrowsers }) => {
     config.module.rules.unshift({
       test: /\.svg$/,
