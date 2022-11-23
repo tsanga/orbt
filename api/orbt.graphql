@@ -1,0 +1,136 @@
+
+type Color {
+	name: ColorType!
+	hex: String!
+}
+
+enum ColorType {
+	RED
+	ORANGE
+	YELLOW
+	LIME
+	GREEN
+	CYAN
+	BLUE
+	INDIGO
+	PURPLE
+	PINK
+}
+
+
+
+
+type Mutation {
+	user: UserMutation!
+	room: RoomMutation!
+}
+
+type Query {
+	version: String!
+	user: UserQuery!
+	room: RoomQuery!
+}
+
+type Room {
+	id: Int!
+	name: String
+	owner: Int
+	members: [RoomMember!]!
+	remote: Int
+	messages: [RoomChatMsg!]!
+	createToken: Token!
+	invites: [RoomInvite!]!
+	getMyMember: RoomMember!
+	memberCapacity: Int!
+	memberCount: Int!
+}
+
+type RoomChatMsg {
+	id: Int!
+	author: Int!
+	msg: String!
+	time: Time!
+}
+
+type RoomInvite {
+	token: Token!
+	inviter: Int!
+}
+
+type RoomMember {
+	user: Int!
+	color: Color!
+}
+
+type RoomMemberUpdate {
+	room: Int!
+	updateType: RoomMemberUpdateType!
+	roomMember: RoomMember!
+	user: User!
+}
+
+enum RoomMemberUpdateType {
+	JOIN
+	LEAVE
+}
+
+type RoomMutation {
+	create: Room!
+	init(room: Int!, owner: Int!, token: String!, color: ColorType): Room!
+	sendChatMsg(roomId: Int!, msg: String!): RoomChatMsg!
+	passRemote(roomId: Int!, toUser: Int!): Room!
+	join(roomId: Int!, inviteToken: String!, color: ColorType): Room!
+	leave(roomId: Int!): User!
+	createInvite(roomId: Int!): Token!
+	revokeInvite(roomId: Int!, invite: String!): Room!
+}
+
+type RoomQuery {
+	get(id: Int!): Room
+	getMember(room: Int!, user: Int!): RoomMember
+}
+
+type RoomRemoteUpdate {
+	room: Int!
+	from: Int
+	to: Int!
+}
+
+
+type Subscription {
+	roomChat(roomId: Int!): RoomChatMsg!
+	roomMembers(roomId: Int!): RoomMemberUpdate!
+	roomRemote(roomId: Int!): RoomRemoteUpdate!
+	integers(step: Int!): Int!
+}
+
+scalar Time
+
+type Token {
+	token: String
+	expires: Time
+}
+
+type User {
+	id: Int!
+	name: String!
+	token: Token!
+	room: Room
+	roomMember: RoomMember
+}
+
+type UserMutation {
+	create(name: String): User!
+	setName(id: Int!, name: String!): User!
+}
+
+type UserQuery {
+	get(id: Int!): User
+	me: User!
+}
+
+schema {
+	query: Query
+	mutation: Mutation
+	subscription: Subscription
+}

@@ -184,6 +184,16 @@ impl Room {
     pub fn add_chat_msg(&mut self, chat: RoomChatMsg) {
         self.messages.push(chat);
     }
+
+    pub fn create_chat_msg(&mut self, author: &User, msg: impl ToString) -> Result<RoomChatMsg, Error> {
+        if !self.is_member(author.id) {
+            return Err("User not in room".into())
+        }
+        let id = self.messages.iter().map(|m| m.id).max().unwrap_or(0) + 1;
+        let msg = RoomChatMsg::new(id, author.id, msg.to_string(), Time::now());
+        self.add_chat_msg(msg.clone());
+        Ok(msg)
+    }
 }
 
 #[derive(Debug, Clone, SimpleObject)]
@@ -211,7 +221,7 @@ pub struct RoomChatMsg {
 }
 
 impl RoomChatMsg {
-    pub fn new(id: u32, author: u32, msg: String, time: Time) -> Self {
+    fn new(id: u32, author: u32, msg: String, time: Time) -> Self {
         Self {
             id,
             author,
@@ -293,12 +303,29 @@ impl RoomRemoteUpdate {
 mod tests {
     use super::*;
 
-    #[test]
-    fn room_join() {
-
+    fn create_room_with_members() -> (Room, User, User) {
+        let mut room = Room::new(1);
+        let owner = User::new(0, "owner".into());
+        let friend = User::new(1, "friend".into());
+        room.init_owner(&owner, None).unwrap();
+        room.join(&friend, None).unwrap();
+        (room, owner, friend)
     }
 
-    fn room_leave() {
+    #[test]
+    fn room_join() {
+        let (room, owner, friend) = create_room_with_members();
+        assert_eq!(room.members.len(), 2);
+        assert!(room.is_member(0));
+        assert!(room.is_member(1));
+    }
 
+    #[test]
+    fn room_leave() {
+        let (mut room, owner, friend) = create_room_with_members();
+        room.leave(&friend).unwrap();
+        assert_eq!(room.members.len(), 1);
+        assert!(room.is_member(0));
+        assert!(room.is_member(1));
     }
 }

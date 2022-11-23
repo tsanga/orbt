@@ -24,15 +24,31 @@ impl RoomQuery {
         Ok(room)
     }
 
-    async fn get_member<'ctx>(&self, ctx: &Context<'ctx>, room: u32, user: u32) -> Result<Option<RoomMember>> {
+    async fn get_member<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, user: u32) -> Result<Option<RoomMember>> {
         let store = ctx.data::<DataStore>()?.room_store();
         let room_store = store.read().unwrap();
-        let room = room_store.get_room_by_id(room).ok_or::<async_graphql::Error>("Room not found".into())?;
+        let room = room_store.get_room_by_id(room_id).ok_or::<async_graphql::Error>("Room not found".into())?;
         let member = room.get_member(user).cloned();
         if let Some(member) = &member {
             ctx.require_act(RoomAction::GetMember(member.user), &room)?;
         }
         Ok(member)
+    }
+
+    async fn get_available_colors<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32) -> Result<Vec<Color>> {
+        let store = ctx.data::<DataStore>()?.room_store();
+        let room_store = store.read().unwrap();
+        let room = room_store.get_room_by_id(room_id).ok_or::<async_graphql::Error>("Room not found".into())?;
+        let colors = room.get_available_colors();
+        Ok(colors.iter().map(|c| Color::from(*c)).collect())
+    }
+
+    async fn is_color_available<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, color: ColorType) -> Result<bool> {
+        let store = ctx.data::<DataStore>()?.room_store();
+        let room_store = store.read().unwrap();
+        let room = room_store.get_room_by_id(room_id).ok_or::<async_graphql::Error>("Room not found".into())?;
+        let avail = room.is_color_available(color);
+        Ok(avail)
     }
 }
 
@@ -79,9 +95,10 @@ impl RoomMutation {
         let room_store = room_store_lock.write().unwrap();
         let Some(mut room) = room_store.get_room_by_id(room_id) else { return Err("Room not found".into()) };
 
-        ctx.require_act(RoomAction::SendChat, &room)?;
+        let actor = ctx.require_act(RoomAction::SendChat, &room)?;
+        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
 
-        let room_chat_msg = RoomChatMsg::new(room_id, 0, msg, Time::now());
+        let room_chat_msg = room.create_chat_msg(&user, msg)?;
 
         room.add_chat_msg(room_chat_msg.clone());
         room_store.save(room);
@@ -172,10 +189,6 @@ impl RoomMutation {
 
         Ok(room)
     }
-
-    /*fn get_available_colors() {
-        todo!()
-    }*/
 }
 
 #[Subscription]

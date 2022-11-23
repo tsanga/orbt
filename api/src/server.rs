@@ -61,7 +61,7 @@ pub async fn graphql_ws(
 
 /*
 {
-    payload: { Authorization: }
+    payload: { Authorization:  }
 }
 */
 async fn on_connection_init(data_store: web::Data<DataStore>, value: serde_json::Value) -> async_graphql::Result<Data> {
