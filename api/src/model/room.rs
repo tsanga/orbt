@@ -334,10 +334,10 @@ mod tests {
 
     #[test]
     fn room_leave() {
-        let (mut room, owner, friend) = create_room_with_members();
+        let (mut room, _owner, friend) = create_room_with_members();
         room.leave(&friend).unwrap();
         assert_eq!(room.members.len(), 1);
         assert!(room.is_member(0));
-        assert!(room.is_member(1));
+        assert!(!room.is_member(1));
     }
 }
