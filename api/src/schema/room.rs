@@ -172,6 +172,10 @@ impl RoomMutation {
 
         Ok(room)
     }
+
+    /*fn get_available_colors() {
+        todo!()
+    }*/
 }
 
 #[Subscription]

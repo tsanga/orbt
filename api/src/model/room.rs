@@ -82,6 +82,7 @@ impl Room {
         if self.members.iter().any(|m| m.user == user.id) {
             return Err("User already in room".into());
         }
+        // todo: check if color is available, if not return err
         let member = RoomMember::new(user.id, &self, color);
         self.members.push(member.clone());
         Ok(member)
@@ -285,5 +286,19 @@ impl RoomRemoteUpdate {
             from,
             to
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn room_join() {
+
+    }
+
+    fn room_leave() {
+
     }
 }

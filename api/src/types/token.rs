@@ -22,7 +22,7 @@ impl Token {
         let uuid = &Uuid::new_v4().to_string().replace("-", "");
         let token = base64::encode_config(uuid.to_string(), base64::URL_SAFE_NO_PAD);
         let token_len = token.len().min(length);
-        token[..token_len].to_string().to_lowercase()
+        token[..token_len].to_string()
     }
 
     pub fn new() -> Self {
