@@ -1,7 +1,6 @@
 use async_graphql::{SimpleObject, Error, Enum, ComplexObject, Context};
-use chrono::{Duration, Utc};
 
-use crate::{types::{time::Time, token::Token, color::{Color, ColorType}}, auth::authority::Authority};
+use crate::{types::{time::Time, token::Token, color::{Color, ColorType}}, auth::authority::Authority, store::DataStore};
 
 use super::user::User;
 
@@ -197,7 +196,9 @@ impl Room {
 }
 
 #[derive(Debug, Clone, SimpleObject)]
+#[graphql(complex)]
 pub struct RoomMember {
+    #[graphql(skip)]
     pub user: u32,
     pub color: Color,
     // todo connection shit
@@ -209,6 +210,17 @@ impl RoomMember {
             user: user_id,
             color: color.unwrap_or(room.pick_available_color()).into(),
         }
+    }
+}
+
+#[ComplexObject]
+impl RoomMember {
+    async fn user(&self, ctx: &Context<'_>) -> async_graphql::Result<User> {
+        let store = ctx.data::<DataStore>()?;
+        let user_store_lock = store.user_store();
+        let user_store = user_store_lock.read().unwrap();
+        let user = user_store.get_user_by_id(self.user).ok_or("User not found")?;
+        Ok(user)
     }
 }
 
