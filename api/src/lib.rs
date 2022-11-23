@@ -14,6 +14,8 @@ use actix_web::{
     App, HttpServer,
 };
 
+use actix_cors::Cors;
+
 pub mod prelude {
     pub use anyhow::{anyhow, Result};
 }
@@ -31,6 +33,12 @@ where
 
     let server = HttpServer::new(move || {
         App::new()
+            .wrap(
+                Cors::default()
+                    .allow_any_header()
+                    .allow_any_origin()
+                    .allow_any_method(),
+            )
             .app_data(Data::new(orbt_data.clone()))
             .app_data(Data::new(data_store.clone()))
             .service(

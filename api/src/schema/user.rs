@@ -1,9 +1,9 @@
 use std::time::Duration;
 
+use crate::{auth::authority::Authority, model::user::User, store::DataStore};
 use async_graphql::*;
 use futures::Stream;
 use tokio_stream::StreamExt;
-use crate::{model::user::User, store::DataStore, auth::authority::Authority};
 
 #[derive(Default)]
 pub struct UserQuery;
@@ -16,7 +16,7 @@ pub struct UserSubscription;
 
 #[Object]
 impl UserQuery {
-    async fn get<'ctx>(&self, ctx: &Context<'ctx>, id: u32) -> Result<Option<User>> {
+    async fn user<'ctx>(&self, ctx: &Context<'ctx>, id: u32) -> Result<Option<User>> {
         let store = ctx.data::<DataStore>()?.user_store();
         let user_store = store.read().unwrap();
         let user = user_store.get_user_by_id(id);
@@ -31,7 +31,7 @@ impl UserQuery {
 
 #[Object]
 impl UserMutation {
-    async fn create<'ctx>(&self, ctx: &Context<'ctx>, name: Option<String>) -> Result<User> {
+    async fn create_user<'ctx>(&self, ctx: &Context<'ctx>, name: Option<String>) -> Result<User> {
         let name = name.unwrap_or("".to_string());
         let store = ctx.data::<DataStore>()?.user_store();
         let mut user_store = store.write().unwrap();
@@ -39,11 +39,17 @@ impl UserMutation {
         Ok(user)
     }
 
-    
-    async fn set_name<'ctx>(&self, ctx: &Context<'ctx>, id: u32, name: String) -> Result<User> {
+    async fn set_user_name<'ctx>(
+        &self,
+        ctx: &Context<'ctx>,
+        id: u32,
+        name: String,
+    ) -> Result<User> {
         let store = ctx.data::<DataStore>()?.user_store();
         let user_store = store.write().unwrap();
-        let mut user = user_store.get_user_by_id(id).ok_or::<async_graphql::Error>("User not found".into())?;
+        let mut user = user_store
+            .get_user_by_id(id)
+            .ok_or::<async_graphql::Error>("User not found".into())?;
         user.name = name;
         user_store.save(user.clone());
         Ok(user)

@@ -5,7 +5,8 @@
       "@/*": ["src/app/*"],
       "@theme/*": ["src/theme/*"],
       "@assets/*": ["src/assets/*"],
-      "@domain/*": ["src/domain/*"]
+      "@domain/*": ["src/domain/*"],
+      "@gql/*": ["src/__generated__/*"]
     },
     "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],

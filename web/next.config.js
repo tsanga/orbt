@@ -12,6 +12,14 @@ const nextConfig = {
   experimental: {
     appDir: true,
   },
+  compiler: {
+    relay: {
+      src: "./src/",
+      schema: "../api/schema.graphql",
+      language: "typescript",
+      artifactDirectory: "./src/__generated__",
+    },
+  },
   output: "standalone",
   webpack: (config, { isServer, dev, dir, supportedBrowsers }) => {
     config.module.rules.unshift({

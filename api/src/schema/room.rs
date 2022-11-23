@@ -14,7 +14,7 @@ pub struct RoomSubscription;
 
 #[Object]
 impl RoomQuery {
-    async fn get<'ctx>(&self, ctx: &Context<'ctx>, id: u32) -> Result<Option<Room>> {
+    async fn room<'ctx>(&self, ctx: &Context<'ctx>, id: u32) -> Result<Option<Room>> {
         let store = ctx.data::<DataStore>()?.room_store();
         let room_store = store.read().unwrap();
         let room = room_store.get_room_by_id(id);
@@ -24,7 +24,7 @@ impl RoomQuery {
         Ok(room)
     }
 
-    async fn get_member<'ctx>(&self, ctx: &Context<'ctx>, room: u32, user: u32) -> Result<Option<RoomMember>> {
+    async fn get_room_member<'ctx>(&self, ctx: &Context<'ctx>, room: u32, user: u32) -> Result<Option<RoomMember>> {
         let store = ctx.data::<DataStore>()?.room_store();
         let room_store = store.read().unwrap();
         let room = room_store.get_room_by_id(room).ok_or::<async_graphql::Error>("Room not found".into())?;
@@ -38,7 +38,7 @@ impl RoomQuery {
 
 #[Object]
 impl RoomMutation {
-    async fn create<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Room> {
+    async fn create_room<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Room> {
         let store = ctx.data::<DataStore>()?.room_store();
         let mut room_store = store.write().unwrap();
         let room = room_store.new_room()?;
@@ -46,7 +46,7 @@ impl RoomMutation {
         Ok(room)
     }
 
-    async fn init<'ctx>(&self, ctx: &Context<'ctx>, room: u32, owner: u32, token: String, color: Option<ColorType>) -> Result<Room> {
+    async fn init_room<'ctx>(&self, ctx: &Context<'ctx>, room: u32, owner: u32, token: String, color: Option<ColorType>) -> Result<Room> {
         let store = ctx.data::<DataStore>()?;
 
         let room_store_lock = store.room_store();
@@ -110,7 +110,7 @@ impl RoomMutation {
         Ok(room)
     }
 
-    async fn join<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, invite_token: String, color: Option<ColorType>) -> Result<Room> {
+    async fn join_room<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, invite_token: String, color: Option<ColorType>) -> Result<Room> {
         let store = ctx.data::<DataStore>()?;
         let room_store_lock = store.room_store();
         let room_store = room_store_lock.write().unwrap();
@@ -129,7 +129,7 @@ impl RoomMutation {
         Ok(room)
     }
 
-    async fn leave<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32) -> Result<User> {
+    async fn leave_room<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32) -> Result<User> {
         let store = ctx.data::<DataStore>()?;
         let room_store_lock = store.room_store();
         let room_store = room_store_lock.write().unwrap();
@@ -147,7 +147,7 @@ impl RoomMutation {
         Ok(user)
     }
 
-    async fn create_invite<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32) -> Result<Token> {
+    async fn create_room_invite<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32) -> Result<Token> {
         let store = ctx.data::<DataStore>()?;
         let room_store_lock = store.room_store();
         let room_store = room_store_lock.write().unwrap();
@@ -160,7 +160,7 @@ impl RoomMutation {
         Ok(room_invite.token.clone())
     }
 
-    async fn revoke_invite<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, invite: String) -> Result<Room> {
+    async fn revoke_room_invite<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, invite: String) -> Result<Room> {
         let store = ctx.data::<DataStore>()?;
         let room_store_lock = store.room_store();
         let room_store = room_store_lock.write().unwrap();
