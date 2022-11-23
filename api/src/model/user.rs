@@ -18,7 +18,7 @@ impl User {
         Self {
             id,
             name,
-            token: Token::new(),
+            token: Token::new_with_length(16),
         }
     }
 }

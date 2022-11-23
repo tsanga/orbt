@@ -82,3 +82,11 @@ impl ColorType {
         ]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn has_minimum_colors() {
+        assert!(super::ColorType::all().len() >= 8);
+    }
+}

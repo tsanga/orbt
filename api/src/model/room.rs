@@ -228,9 +228,8 @@ pub struct RoomInvite {
 
 impl RoomInvite {
     pub fn new(inviter: u32) -> Self {
-        let now = Utc::now().timestamp_millis() as u128;
-        let duration = Duration::minutes(crate::model::room::INVITE_EXPIRY_MINUTES as i64).num_milliseconds() as u128;
-        let expiry = Time::from(now + duration);
+        let duration = INVITE_EXPIRY_MINUTES as u64 * 60 * 1000;
+        let expiry = Time::duration(duration);
         Self {
             token: Token::new_with_expiry(expiry),
             inviter,
