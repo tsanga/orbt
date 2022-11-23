@@ -18,7 +18,6 @@
     "artifactDirectory": "./src/__generated__"
   },
   "dependencies": {
-    "@apollo/client": "^3.7.1",
     "@next/font": "13.0.5-canary.6",
     "@svgr/webpack": "^6.5.1",
     "@types/node": "18.11.9",
