@@ -10,6 +10,7 @@ use super::room::{RoomMember, Room};
 pub struct User {
     pub id: u32,
     pub name: String,
+    //#[graphql(skip)]
     pub token: Token,
 }
 
@@ -18,7 +19,7 @@ impl User {
         Self {
             id,
             name,
-            token: Token::new(),
+            token: Token::new_with_length(16),
         }
     }
 }

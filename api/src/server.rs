@@ -59,6 +59,11 @@ pub async fn graphql_ws(
         .start(&http, payload)
 }
 
+/*
+{
+    payload: { Authorization: }
+}
+*/
 async fn on_connection_init(data_store: web::Data<DataStore>, value: serde_json::Value) -> async_graphql::Result<Data> {
     let Some(value) = value.as_object() else { return Err("connection_init payload must be an object".into()) };
     let Some(authorization) = value.get("Authorization") else { return Err("connection_init payload must have 'Authorization' key".into()) };

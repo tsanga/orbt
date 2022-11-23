@@ -1,7 +1,7 @@
 use async_graphql::*;
 use futures::{Stream, StreamExt};
 
-use crate::{model::{room::{Room, RoomMember, RoomChatMsg, RoomMemberUpdate, RoomRemoteUpdate}, user::User}, store::DataStore, types::{color::Color, time::Time, token::Token}, auth::{action::Action, authority::Authority, actor::Actor}, stream::OrbtStreamBroker};
+use crate::{model::{room::{Room, RoomMember, RoomChatMsg, RoomMemberUpdate, RoomRemoteUpdate}, user::User}, store::DataStore, types::{color::{Color, ColorType}, time::Time, token::Token}, auth::{action::Action, authority::Authority, actor::Actor}, stream::OrbtStreamBroker};
 
 #[derive(Default)]
 pub struct RoomQuery;
@@ -46,7 +46,7 @@ impl RoomMutation {
         Ok(room)
     }
 
-    async fn init<'ctx>(&self, ctx: &Context<'ctx>, room: u32, owner: u32, token: String, color: Option<Color>) -> Result<Room> {
+    async fn init<'ctx>(&self, ctx: &Context<'ctx>, room: u32, owner: u32, token: String, color: Option<ColorType>) -> Result<Room> {
         let store = ctx.data::<DataStore>()?;
 
         let room_store_lock = store.room_store();
@@ -110,7 +110,7 @@ impl RoomMutation {
         Ok(room)
     }
 
-    async fn join<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, invite_token: String, color: Option<Color>) -> Result<Room> {
+    async fn join<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, invite_token: String, color: Option<ColorType>) -> Result<Room> {
         let store = ctx.data::<DataStore>()?;
         let room_store_lock = store.room_store();
         let room_store = room_store_lock.write().unwrap();
@@ -172,6 +172,10 @@ impl RoomMutation {
 
         Ok(room)
     }
+
+    /*fn get_available_colors() {
+        todo!()
+    }*/
 }
 
 #[Subscription]

@@ -1,7 +1,7 @@
 pub mod user;
 pub mod room;
 
-use std::sync::{Arc, RwLock};
+use std::{sync::{Arc, RwLock}, ops::Deref};
 
 pub use user::UserStore;
 pub use room::RoomStore;
@@ -9,6 +9,13 @@ pub use room::RoomStore;
 #[derive(Clone)]
 pub struct DataStore {
     inner: Arc<DataStoreInner>,
+}
+
+impl Deref for DataStore {
+    type Target = Arc<DataStoreInner>;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 
 impl DataStore {
@@ -38,5 +45,32 @@ impl DataStoreInner {
             user_store: Arc::new(RwLock::new(UserStore::new())),
             room_store: Arc::new(RwLock::new(RoomStore::new())),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::model::{user::User, room::Room};
+
+    use super::*;
+
+    #[test]
+    fn does_store_user() {
+        let data_store = DataStore::new();
+        let new_user = User::new(0, "test".to_string());
+        let user_store_lock = data_store.user_store();
+        let user_store = user_store_lock.write().unwrap();
+        user_store.save(new_user);
+        assert!(user_store.users.read().unwrap().contains_key(&0u32));
+    }
+
+    #[test]
+    fn does_store_room() {
+        let data_store = DataStore::new();
+        let new_room = Room::new(0);
+        let room_store_lock = data_store.room_store();
+        let room_store = room_store_lock.write().unwrap();
+        room_store.save(new_room);
+        assert!(room_store.rooms.read().unwrap().contains_key(&0u32));
     }
 }

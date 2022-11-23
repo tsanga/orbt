@@ -1,7 +1,7 @@
 use async_graphql::{SimpleObject, Error, Enum, ComplexObject, Context};
 use chrono::{Duration, Utc};
 
-use crate::{types::{time::Time, token::Token, color::Color}, auth::authority::Authority};
+use crate::{types::{time::Time, token::Token, color::{Color, ColorType}}, auth::authority::Authority};
 
 use super::user::User;
 
@@ -33,6 +33,14 @@ impl Room {
             return async_graphql::Result::Err("You are not a member of this room".into())
         }
     }
+
+    async fn member_capacity(&self) -> usize {
+        crate::model::room::MAX_ROOM_SIZE
+    }
+
+    async fn member_count(&self) -> usize {
+        self.members.len()
+    }
 }
 
 impl Room {
@@ -53,7 +61,7 @@ impl Room {
         self.name.is_some() && self.owner.is_some()
     }
 
-    pub fn init_owner(&mut self, owner: &User, color: Option<Color>) -> Result<RoomMember, Error> {
+    pub fn init_owner(&mut self, owner: &User, color: Option<ColorType>) -> Result<RoomMember, Error> {
         self.set_owner(owner.id);
         self.set_name(format!("{}'s Room", &owner.name));
         self.remote = Some(owner.id);
@@ -70,10 +78,11 @@ impl Room {
         self.owner = Some(owner);
     }
 
-    pub fn join(&mut self, user: &User, color: Option<Color>) -> Result<RoomMember, Error> {
+    pub fn join(&mut self, user: &User, color: Option<ColorType>) -> Result<RoomMember, Error> {
         if self.members.iter().any(|m| m.user == user.id) {
             return Err("User already in room".into());
         }
+        // todo: check if color is available, if not return err
         let member = RoomMember::new(user.id, &self, color);
         self.members.push(member.clone());
         Ok(member)
@@ -127,16 +136,16 @@ impl Room {
         Ok(())
     }
 
-    pub fn pick_available_color(&self) -> Color {
+    pub fn pick_available_color(&self) -> ColorType {
         *self.get_available_colors().first().expect("What the fuck, there are no colors")
     }
 
-    pub fn get_available_colors(&self) -> Vec<Color> {
-        Color::all().into_iter().filter(|c| self.is_color_available(*c)).collect()
+    pub fn get_available_colors(&self) -> Vec<ColorType> {
+        ColorType::all().into_iter().filter(|c| self.is_color_available(*c)).collect()
     }
 
-    pub fn is_color_available(&self, color: Color) -> bool {
-        !self.members.iter().any(|m| m.color == color)
+    pub fn is_color_available(&self, color: ColorType) -> bool {
+        !self.members.iter().any(|m| m.color.name == color)
     }
 
     pub fn get_member(&self, id: u32) -> Option<&RoomMember> {
@@ -185,10 +194,10 @@ pub struct RoomMember {
 }
 
 impl RoomMember {
-    pub fn new(user_id: u32, room: &Room, color: Option<Color>) -> Self {
+    pub fn new(user_id: u32, room: &Room, color: Option<ColorType>) -> Self {
         Self {
             user: user_id,
-            color: color.unwrap_or(room.pick_available_color()),
+            color: color.unwrap_or(room.pick_available_color()).into(),
         }
     }
 }
@@ -220,9 +229,8 @@ pub struct RoomInvite {
 
 impl RoomInvite {
     pub fn new(inviter: u32) -> Self {
-        let now = Utc::now().timestamp_millis() as u128;
-        let duration = Duration::minutes(crate::model::room::INVITE_EXPIRY_MINUTES as i64).num_milliseconds() as u128;
-        let expiry = Time::from(now + duration);
+        let duration = INVITE_EXPIRY_MINUTES as u64 * 60 * 1000;
+        let expiry = Time::duration(duration);
         Self {
             token: Token::new_with_expiry(expiry),
             inviter,
@@ -278,5 +286,19 @@ impl RoomRemoteUpdate {
             from,
             to
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn room_join() {
+
+    }
+
+    fn room_leave() {
+
     }
 }
