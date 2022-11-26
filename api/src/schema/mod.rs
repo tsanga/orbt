@@ -2,25 +2,25 @@ pub mod room;
 pub mod user;
 use async_graphql::*;
 
-use self::{room::RoomSubscription, user::UserSubscription};
+use self::{room::*, user::*};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 #[derive(Default)]
-pub struct RootQuery;
-
-#[derive(MergedObject, Default)]
-pub struct Mutation(user::UserMutation, room::RoomMutation);
-
-#[derive(MergedSubscription, Default)]
-pub struct Subscription(RoomSubscription, UserSubscription);
+struct QueryExtensions;
 
 #[Object]
-impl RootQuery {
+impl QueryExtensions {
     async fn version(&self) -> &'static str {
         VERSION
     }
 }
 
 #[derive(MergedObject, Default)]
-pub struct Query(RootQuery, user::UserQuery, room::RoomQuery);
+pub struct Query(UserQuery, RoomQuery, QueryExtensions);
+
+#[derive(MergedObject, Default)]
+pub struct Mutation(UserMutation, RoomMutation);
+
+#[derive(MergedSubscription, Default)]
+pub struct Subscription(UserSubscription, RoomSubscription);

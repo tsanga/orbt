@@ -6,7 +6,8 @@
       "@theme/*": ["src/theme/*"],
       "@assets/*": ["src/assets/*"],
       "@domain/*": ["src/domain/*"],
-      "@gql/*": ["src/__generated__/*"]
+      "@gql/*": ["src/__generated__/*"],
+      "@hooks/*": ["src/hooks/*"]
     },
     "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],

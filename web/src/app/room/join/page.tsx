@@ -1,18 +1,14 @@
 "use client";
 
 import React from "react";
-import type { pageQuery as PageQuery } from "@gql/pageQuery.graphql";
-import { graphql, useLazyLoadQuery } from "react-relay";
-
-const PageQuery = graphql`
-  query pageQuery($id: Int!) {
-    user(id: $id) {
-      name
-    }
-  }
-`;
+import useAuth from "@hooks/use-auth";
 
 export default function RoomJoinPage() {
-  const data = useLazyLoadQuery<PageQuery>(PageQuery, { id: 0 });
-  return <>{data.user.get?.name}</>;
+  const { user } = useAuth();
+
+  return (
+    <h1>
+      HELLO {user?.name} ID: {user?.id}
+    </h1>
+  );
 }

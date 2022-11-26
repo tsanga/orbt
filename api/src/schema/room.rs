@@ -73,7 +73,7 @@ impl RoomMutation {
         Ok(room)
     }
 
-    async fn send_chat_msg<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, msg: String) -> Result<RoomChatMsg> {
+    async fn send_room_message<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, msg: String) -> Result<RoomChatMsg> {
         let store = ctx.data::<DataStore>()?;
         let room_store_lock = store.room_store();
         let room_store = room_store_lock.write().unwrap();
@@ -90,7 +90,7 @@ impl RoomMutation {
         Ok(room_chat_msg)
     }
 
-    async fn pass_remote<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, to_user: u32) -> Result<Room> {
+    async fn pass_room_remote<'ctx>(&self, ctx: &Context<'ctx>, room_id: u32, to_user: u32) -> Result<Room> {
         let store = ctx.data::<DataStore>()?;
         let room_store_lock = store.room_store();
         let room_store = room_store_lock.write().unwrap();

@@ -1,9 +1,9 @@
 use std::time::Duration;
 
-use crate::{auth::authority::Authority, model::user::User, store::DataStore};
 use async_graphql::*;
 use futures::Stream;
 use tokio_stream::StreamExt;
+use crate::{model::user::User, store::DataStore, auth::authority::Authority};
 
 #[derive(Default)]
 pub struct UserQuery;
@@ -39,17 +39,11 @@ impl UserMutation {
         Ok(user)
     }
 
-    async fn set_user_name<'ctx>(
-        &self,
-        ctx: &Context<'ctx>,
-        id: u32,
-        name: String,
-    ) -> Result<User> {
+    
+    async fn set_user_name<'ctx>(&self, ctx: &Context<'ctx>, id: u32, name: String) -> Result<User> {
         let store = ctx.data::<DataStore>()?.user_store();
         let user_store = store.write().unwrap();
-        let mut user = user_store
-            .get_user_by_id(id)
-            .ok_or::<async_graphql::Error>("User not found".into())?;
+        let mut user = user_store.get_user_by_id(id).ok_or::<async_graphql::Error>("User not found".into())?;
         user.name = name;
         user_store.save(user.clone());
         Ok(user)

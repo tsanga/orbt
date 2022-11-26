@@ -8,13 +8,12 @@ mod types;
 
 use std::future::Future;
 
+use actix_cors::Cors;
 use actix_web::{
     guard,
     web::{self, Data},
     App, HttpServer,
 };
-
-use actix_cors::Cors;
 
 pub mod prelude {
     pub use anyhow::{anyhow, Result};
@@ -36,8 +35,8 @@ where
             .wrap(
                 Cors::default()
                     .allow_any_header()
-                    .allow_any_origin()
-                    .allow_any_method(),
+                    .allow_any_method()
+                    .allow_any_origin(),
             )
             .app_data(Data::new(orbt_data.clone()))
             .app_data(Data::new(data_store.clone()))
