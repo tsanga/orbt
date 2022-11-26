@@ -19,14 +19,16 @@ pub mod prelude {
 }
 
 use async_graphql::Schema;
+use model::{user::User, room::Room};
 use store::DataStore;
 
 pub async fn start_api_server<Fut>(callback: Option<impl FnOnce() -> Fut>) -> std::io::Result<()>
 where
     Fut: Future<Output = ()>,
 {
-    let data_store = DataStore::new();
-    let orbt_data = server::OrbtData::new(data_store.clone());
+    let user_store = DataStore::<User>::new();
+    let room_store = DataStore::<Room>::new();
+    let orbt_data = server::OrbtData::new(user_store.clone(), room_store.clone());
     let address = std::env::var("ADDRESS").unwrap_or("0.0.0.0".to_string());
     let port = std::env::var("PORT").unwrap_or("8080".to_string());
 
@@ -53,7 +55,8 @@ where
     let server = HttpServer::new(move || {
         App::new()
             .app_data(Data::new(orbt_data.clone()))
-            .app_data(Data::new(data_store.clone()))
+            .app_data(Data::new(user_store.clone()))
+            .app_data(Data::new(room_store.clone()))
             .service(
                 web::resource("/")
                     .guard(guard::Post())

@@ -14,24 +14,21 @@ pub enum Actor {
 }
 
 impl Actor {
-    pub fn identify(data_store: web::Data<DataStore>, request: HttpRequest) -> Self {
+    pub fn identify(user_store: web::Data<DataStore<User>>, request: HttpRequest) -> Self {
         if let Some(identifier) = request.headers().get("Authorization") {
             let identifier = identifier.to_str().unwrap();
-            return Self::identify_with_token(data_store, identifier)
+            return Self::identify_with_token(user_store, identifier)
         }
         Self::None
     }
 
-    pub fn identify_with_token(data_store: web::Data<DataStore>, identifier: impl ToString) -> Self {
+    pub fn identify_with_token(user_store: web::Data<DataStore<User>>, identifier: impl ToString) -> Self {
         let identifier = identifier.to_string();
         if identifier == option_env!("API_TOKEN").unwrap_or("ORBT_INTERNAL") {
             return Self::Internal;
         } else {
-            let data_store = &data_store.into_inner();
-            let user_store_lock = data_store.user_store().clone();
-            let user_store = user_store_lock.read().unwrap();
-            if let Some(user) = user_store.get_user_by_token(identifier) {
-                return Self::User(user);
+            if let Some(user) = user_store.data.lock().unwrap().values().find(|u| u.token.check(&identifier)) {
+                return Self::User(user.clone());
             }
         }
         Self::None
@@ -77,13 +74,10 @@ mod tests {
 
     #[test]
     fn actor_identify_with_token() {
-        let user = User::new(0,"tester".to_string());
-        let data_store = DataStore::new();
-        let user_store_lock = data_store.user_store();
-        let user_store = user_store_lock.write().unwrap();
-        user_store.save(user.clone());
-        drop(user_store); // necessary to prevent deadlock
-        let actor = Actor::identify_with_token(web::Data::new(data_store), user.token.to_string());
+        let user = User::new("tester".to_string());
+        let user_store = DataStore::<User>::new();
+        user_store.insert(user.clone());
+        let actor = Actor::identify_with_token(web::Data::new(user_store), user.token.to_string());
         assert_eq!(
             actor.as_user().unwrap().token.token.as_ref().unwrap(), 
             user.token.token.as_ref().unwrap()

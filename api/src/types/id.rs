@@ -1,109 +1,157 @@
-use std::collections::HashMap;
+use crate::model::Model;
 use std::hash::Hash;
-use std::ops::Deref;
 
-pub trait Id: Send + Sync + ToString + PartialEq + Eq + Hash + Sized + Clone + std::fmt::Debug {
+use async_graphql::{InputValueError, Scalar, ScalarType, Value};
+use serde::{Deserialize, Serialize};
+
+pub trait IdType:
+    Send + Sync + ToString + PartialEq + Eq + Hash + Sized + Clone + std::fmt::Debug
+{
     type Error: std::error::Error;
     fn new() -> Self;
-    fn from(id: impl ToString) -> Result<Self, Self::Error>;
+    fn from_str(id: impl ToString) -> Result<Self, Self::Error>;
 }
 
-pub trait Model : Clone {
-    type Id: Id;
-    fn id(&self) -> &Self::Id;
-}
+#[derive(Debug, Clone, Eq, Hash)]
+pub struct Id<M: Model>(pub <M as Model>::Id);
 
-#[derive(Clone, Debug)]
-pub struct ModelId<M: Model>(<M as Model>::Id);
-
-impl<M: Model> ModelId<M> {
+impl<M: Model> Id<M> {
     pub fn new() -> Self {
         Self(<M as Model>::Id::new())
     }
-    pub fn get<'a>(&self, data_store: &'a DataStore<M>) -> Option<&'a M> {
-        data_store.get(&self.0)
+    pub fn from_str(id: impl ToString) -> Result<Self, <<M as Model>::Id as IdType>::Error> {
+        Ok(Self(<M as Model>::Id::from_str(id)?))
     }
 }
 
-impl<M: Model> Deref for ModelId<M> {
-    type Target = <M as Model>::Id;
-    fn deref(&self) -> &Self::Target {
-        &self.0
+impl<M: Model> PartialEq for Id<M> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
     }
 }
 
-pub struct DataStore<M: Model> {
-    data: HashMap<<M as Model>::Id, M>,
-}
-
-impl<M: Model> DataStore<M> {
-    pub fn new() -> Self {
-        Self {
-            data: HashMap::new(),
+#[Scalar]
+impl<M: Model> ScalarType for Id<M> {
+    fn parse(value: async_graphql::Value) -> async_graphql::InputValueResult<Self> {
+        if let Value::String(value_str) = &value {
+            if let Ok(id) = Self::from_str(value_str) {
+                Ok(id)
+            } else {
+                Err(InputValueError::expected_type(value))
+            }
+        } else {
+            Err(InputValueError::expected_type(value))
         }
     }
 
-    pub fn get(&self, id: &<M as Model>::Id) -> Option<&M> {
-        self.data.get(id)
-    }
-
-    pub fn insert(&mut self, model: M) {
-        self.data.insert(<M as Model>::id(&model).clone(), model);
+    fn to_value(&self) -> async_graphql::Value {
+        Value::String(self.0.to_string())
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct User {
-    id: ModelId<Self>,
+impl<M: Model> Serialize for Id<M> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.0.to_string())
+    }
 }
 
-impl Model for User {
-    type Id = StringId;
-    fn id(&self) -> &Self::Id {
-        &self.id.0
+struct IdVisitor<M: Model>(std::marker::PhantomData<M>);
+
+impl<'de, M: Model> serde::de::Visitor<'de> for IdVisitor<M> {
+    type Value = Id<M>;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a string")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(Id::from_str(value).map_err(|_| E::custom("invalid id"))?)
+    }
+}
+
+impl<'de, M: Model> Deserialize<'de> for Id<M> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_string(IdVisitor(std::marker::PhantomData))
+    }
+}
+
+pub trait ToId<M: Model> {
+    fn to_id(&self) -> Result<<M as Model>::Id, <<M as Model>::Id as IdType>::Error>;
+}
+
+impl<M: Model> ToId<M> for Id<M> {
+    fn to_id(&self) -> Result<<M as Model>::Id, <<M as Model>::Id as IdType>::Error> {
+        Ok(self.0.clone())
+    }
+}
+
+impl<M: Model> ToId<M> for &Id<M> {
+    fn to_id(&self) -> Result<<M as Model>::Id, <<M as Model>::Id as IdType>::Error> {
+        Ok(self.0.clone())
+    }
+}
+
+impl<M: Model> ToId<M> for String {
+    fn to_id(&self) -> Result<<M as Model>::Id, <<M as Model>::Id as IdType>::Error> {
+        <M as Model>::Id::from_str(&self)
+    }
+}
+
+impl<M: Model> ToId<M> for &str {
+    fn to_id(&self) -> Result<<M as Model>::Id, <<M as Model>::Id as IdType>::Error> {
+        <M as Model>::Id::from_str(&self)
     }
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Debug)]
-pub struct StringId(String);
+pub struct UuidId(pub String);
 
-impl ToString for StringId {
+impl ToString for UuidId {
     fn to_string(&self) -> String {
         self.0.clone()
     }
 }
 
-impl Id for StringId {
+impl IdType for UuidId {
     type Error = std::convert::Infallible;
     fn new() -> Self {
         Self(uuid::Uuid::new_v4().to_string())
     }
-    fn from(id: impl ToString) -> Result<Self, Self::Error> {
+    fn from_str(id: impl ToString) -> Result<Self, Self::Error> {
         Ok(Self(id.to_string()))
     }
 }
 
-#[cfg(test)]
-mod test {
-    use async_graphql::Context;
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Debug)]
+pub struct NumId(pub u32);
 
-    use super::*;
-    #[test]
-    fn test() {
-        let mut user_data_store = DataStore::<User>::new();
-        let id = ModelId::<User>::new();
-        let user = User { id: id.clone() };
-        user_data_store.insert(user);
-        
-        let retrieved_user = user_data_store.get(&id).unwrap();
-        assert_eq!(&id.0.0, &retrieved_user.id().0);
-
-        // or
-        let u = id.get(&user_data_store).unwrap();
+impl NumId {
+    pub fn from_u32(id: u32) -> Self {
+        Self(id)
     }
+}
 
-    fn test_ctx(ctx: &Context<'_>) {
-        let user_data_store = ctx.data::<DataStore<User>>().unwrap();
-        let user = user_data_store.get(&StringId("test".to_string())).unwrap();
+impl ToString for NumId {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
+impl IdType for NumId {
+    type Error = std::num::ParseIntError;
+    fn new() -> Self {
+        Self(0)
+    }
+    fn from_str(id: impl ToString) -> Result<Self, Self::Error> {
+        Ok(Self(id.to_string().parse()?))
     }
 }
