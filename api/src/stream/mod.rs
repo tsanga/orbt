@@ -1,3 +1,5 @@
+pub mod sub;
+
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
@@ -12,6 +14,7 @@ use futures_util::{Stream, StreamExt};
 use once_cell::sync::Lazy;
 use slab::Slab;
 
+// <TypeId::Senders<T>, Box<Senders<T>()>
 static SUBSCRIBERS: Lazy<Mutex<HashMap<TypeId, Box<dyn Any + Send>>>> = Lazy::new(Default::default);
 
 struct Senders<T>(Slab<UnboundedSender<T>>);

@@ -241,7 +241,7 @@ pub struct RoomChatMsg {
 }
 
 impl RoomChatMsg {
-    fn new(id: Id<Self>, room: Id<Room>, author: Id<User>, msg: String, time: Time) -> Self {
+    pub fn new(id: Id<Self>, room: Id<Room>, author: Id<User>, msg: String, time: Time) -> Self {
         Self {
             id,
             room,
