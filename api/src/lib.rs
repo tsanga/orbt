@@ -49,7 +49,7 @@ where
         } else if args[1].to_lowercase() == "--export-version" {
             let version = env!("CARGO_PKG_VERSION").to_string();
             println!("{}", &version);
-            std::fs::write("./flux-version.txt", version)?;
+            std::fs::write("./orbt-version.txt", version)?;
             return Ok(());
         }
     }
