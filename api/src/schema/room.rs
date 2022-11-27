@@ -50,7 +50,7 @@ impl RoomQuery {
 
 #[Object]
 impl RoomMutation {
-    async fn room_create<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Room> {
+    async fn create_room<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Room> {
         let room_store = ctx.data::<DataStore<Room>>()?;
         let room = Room::new();
         room_store.insert(room.clone());
@@ -58,7 +58,7 @@ impl RoomMutation {
         Ok(room)
     }
 
-    async fn room_init<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, owner: Id<User>, token: String, color: Option<ColorType>) -> Result<Room> {
+    async fn init_room<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, owner: Id<User>, token: String, color: Option<ColorType>) -> Result<Room> {
         let room_store = ctx.data::<DataStore<Room>>()?;
         let user_store = ctx.data::<DataStore<User>>()?;
 
@@ -78,7 +78,7 @@ impl RoomMutation {
         Ok(room.clone())
     }
 
-    async fn room_send_chat<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, msg: String) -> Result<RoomChatMsg> {
+    async fn send_chat_message<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, msg: String) -> Result<RoomChatMsg> {
         let room_store = ctx.data::<DataStore<Room>>()?;
         let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
 
@@ -95,7 +95,7 @@ impl RoomMutation {
         Ok(room_chat_msg)
     }
 
-    async fn room_pass_remote<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, to_user: Id<User>) -> Result<Room> {
+    async fn pass_room_remote<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, to_user: Id<User>) -> Result<Room> {
         let room_store = ctx.data::<DataStore<Room>>()?;
         let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
 
@@ -115,7 +115,7 @@ impl RoomMutation {
         Ok(room.clone())
     }
 
-    async fn room_join<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, invite_token: String, color: Option<ColorType>) -> Result<Room> {
+    async fn join_room<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, invite_token: String, color: Option<ColorType>) -> Result<Room> {
         let room_store = ctx.data::<DataStore<Room>>()?;
         let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
 
@@ -132,7 +132,7 @@ impl RoomMutation {
         Ok(room.clone())
     }
 
-    async fn room_leave<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>) -> Result<User> {
+    async fn leave_room<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>) -> Result<User> {
         let room_store = ctx.data::<DataStore<Room>>()?;
         let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
 
@@ -148,7 +148,7 @@ impl RoomMutation {
         Ok(user)
     }
 
-    async fn room_create_invite<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>) -> Result<Token> {
+    async fn create_room_invite<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>) -> Result<Token> {
         let room_store = ctx.data::<DataStore<Room>>()?;
         let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
 
@@ -159,7 +159,7 @@ impl RoomMutation {
         Ok(room_invite.token.clone())
     }
 
-    async fn room_revoke_invite<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, invite: String) -> Result<Room> {
+    async fn revoke_room_invite<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, invite: String) -> Result<Room> {
         let room_store = ctx.data::<DataStore<Room>>()?;
         let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
 

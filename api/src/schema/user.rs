@@ -23,7 +23,7 @@ impl UserQuery {
 
 #[Object]
 impl UserMutation {
-    async fn user_create<'ctx>(&self, ctx: &Context<'ctx>, name: Option<String>) -> Result<User> {
+    async fn create_user<'ctx>(&self, ctx: &Context<'ctx>, name: Option<String>) -> Result<User> {
         let name = name.unwrap_or("".to_string());
         let user_store = ctx.data::<DataStore<User>>()?;
         let user = User::new(name);
@@ -31,7 +31,7 @@ impl UserMutation {
         Ok(user)
     }
     
-    async fn user_set_name<'ctx>(&self, ctx: &Context<'ctx>, id: Id<User>, name: String) -> Result<User> {
+    async fn set_user_name<'ctx>(&self, ctx: &Context<'ctx>, id: Id<User>, name: String) -> Result<User> {
         let user_store = ctx.data::<DataStore<User>>()?;
         let mut user = user_store.get(&id)?.ok_or::<async_graphql::Error>("User not found".into())?;
         user.name = name;
