@@ -1,15 +1,14 @@
 use crate::prelude::*;
-use console::{style, Emoji, StyledObject};
+use console::style;
 use fork::{fork, Fork};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use lazy_static::lazy_static;
-use nix::sys::wait::WaitPidFlag;
+
 use nix::unistd::Pid;
 use std::future::Future;
-use std::process::{Child, ExitStatus};
+use std::process::ExitStatus;
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 lazy_static! {
     static ref CHECK: String = style("✔".to_string()).magenta().to_string();
