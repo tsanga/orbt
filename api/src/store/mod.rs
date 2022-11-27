@@ -84,7 +84,7 @@ impl <'a, M: Model> Drop for DataStoreEntry<'a, M> {
 
 #[cfg(test)]
 mod test {
-    use crate::{model::user::User, types::id::Id};
+    use crate::model::user::User;
 
     use super::*;
     #[test]
@@ -106,5 +106,30 @@ mod test {
         let get2 = user_data_store.get(&id).unwrap().unwrap();
 
         assert_eq!("jonah", &get2.name);
+    }
+
+    #[test]
+    fn store_multiple_models() {
+        let store = DataStore::<User>::new();
+        
+        let user1 = User::new("user1".to_string());
+        let user2 = User::new("user2".to_string());
+        
+        let id1 = user1.id.clone();
+        let id2 = user2.id.clone();
+
+        store.insert(user1);
+        store.insert(user2);
+
+        let user1 = store.get(&id1).unwrap().unwrap();
+        let user1id = user1.id.clone();
+        drop(user1);
+        let user2 = store.get(&id2).unwrap().unwrap();
+        let user2id = user2.id.clone();
+        drop(user2);
+
+        assert_eq!(id1.0, user1id);
+        assert_eq!(id2.0, user2id);
+        // Note: current implementation of store causes the mutex's lock to be poisoned when getting two DataStoreEntry in the same scope
     }
 }

@@ -1,5 +1,5 @@
 use crate::model::Model;
-use std::hash::Hash;
+use std::{hash::Hash, fmt::Display};
 
 use async_graphql::{InputValueError, Scalar, ScalarType, Value};
 use serde::{Deserialize, Serialize};
@@ -115,16 +115,17 @@ impl<M: Model> ToId<M> for &str {
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Debug)]
 pub struct UuidId(pub String);
 
-impl ToString for UuidId {
-    fn to_string(&self) -> String {
-        self.0.clone()
+impl Display for UuidId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
 impl IdType for UuidId {
     type Error = std::convert::Infallible;
     fn new() -> Self {
-        Self(uuid::Uuid::new_v4().to_string())
+        let uuid_str = uuid::Uuid::new_v4().to_string().replace("-", "")[0..6].to_string();
+        Self(uuid_str)
     }
     fn from_str(id: impl ToString) -> Result<Self, Self::Error> {
         Ok(Self(id.to_string()))
@@ -140,9 +141,9 @@ impl NumId {
     }
 }
 
-impl ToString for NumId {
-    fn to_string(&self) -> String {
-        self.0.to_string()
+impl Display for NumId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

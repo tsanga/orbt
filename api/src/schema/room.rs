@@ -1,7 +1,7 @@
 use async_graphql::*;
 use futures::{Stream, StreamExt};
 
-use crate::{model::{room::{Room, RoomMember, RoomChatMsg, RoomMemberUpdate, RoomRemoteUpdate}, user::User}, store::DataStore, types::{color::{Color, ColorType}, time::Time, token::Token, id::Id}, auth::{action::Action, authority::Authority, actor::Actor}, stream::OrbtStreamBroker};
+use crate::{model::{room::{Room, RoomMember, RoomChatMsg, RoomMemberUpdate, RoomRemoteUpdate}, user::User}, store::DataStore, types::{color::{Color, ColorType}, time::Time, token::Token, id::Id}, auth::{action::Action, authority::Authority, actor::Actor}, stream::StreamController};
 
 #[derive(Default)]
 pub struct RoomQuery;
@@ -89,7 +89,8 @@ impl RoomMutation {
 
         room.add_chat_msg(room_chat_msg.clone());
 
-        OrbtStreamBroker::publish(room_chat_msg.clone());
+        let stream_ctl = ctx.data::<StreamController>()?;
+        stream_ctl.publish(room_chat_msg.clone());
 
         Ok(room_chat_msg)
     }
@@ -107,8 +108,9 @@ impl RoomMutation {
 
         room.pass_remote(&user.id, to_user.clone())?;
 
+        let stream_ctl = ctx.data::<StreamController>()?;
         let room_remote_update = RoomRemoteUpdate::new(room.id.clone(), from, to_user);
-        OrbtStreamBroker::publish(room_remote_update);
+        stream_ctl.publish(room_remote_update);
 
         Ok(room.clone())
     }
@@ -123,8 +125,9 @@ impl RoomMutation {
         let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
         let room_member = room.join(&user, color)?;
 
+        let stream_ctl = ctx.data::<StreamController>()?;
         let room_member_update = RoomMemberUpdate::new_join(room.id.clone(), room_member, user);
-        OrbtStreamBroker::publish(room_member_update);
+        stream_ctl.publish(room_member_update);
 
         Ok(room.clone())
     }
@@ -138,8 +141,9 @@ impl RoomMutation {
         let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
         let room_member = room.leave(&user)?;
 
+        let stream_ctl = ctx.data::<StreamController>()?;
         let room_member_update = RoomMemberUpdate::new_leave(room.id.clone(), room_member, user.clone());
-        OrbtStreamBroker::publish(room_member_update);
+        stream_ctl.publish(room_member_update);
 
         Ok(user)
     }
@@ -168,37 +172,92 @@ impl RoomMutation {
 
 #[Subscription]
 impl RoomSubscription {
-    async fn room_chat<'ctx>(&self, ctx: &Context<'ctx>, id: Id<Room>) -> Result<impl Stream<Item = RoomChatMsg>>{
+    async fn room_chat<'ctx>(&'ctx self, ctx: &Context<'ctx>, id: Id<Room>) -> Result<impl Stream<Item = RoomChatMsg> + 'ctx>{
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let Some(room) = room_store.get(&id)? else { return Err("Room not found".into()) };
-        ctx.require_act(RoomAction::SubscribeChat, &room)?;
-        let id = id.clone();
-        Ok(OrbtStreamBroker::<RoomChatMsg>::subscribe().filter(move |event| {
-            let res = event.room == id;
-            async move { res }
-        }))
+        let user_store = ctx.data::<DataStore<User>>()?;
+        let Some(mut room) = room_store.get(&id)? else { return Err("Room not found".into()) };
+
+        let actor = ctx.require_act(RoomAction::SubscribeChat, &room)?;
+        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+
+        // TODO: check if user is already connected to room_chat
+
+        let id = room.id.clone(); // room id
+        let stream_ctl = ctx.data::<StreamController>()?;
+
+        let Some(room_member) = room.get_member_mut(&user.id) else { return Err("You are not a member of that room".into()) };
+        room_member.connection.connected_chat = true;
+
+        Ok(
+            stream_ctl.subscribe::<RoomChatMsg, _>(&user.id, &room.id, user_store.clone(), room_store.clone(), |data| {
+                // on disconnect
+                let Ok(room) = &mut data.room_store.get(&data.room) else { return /* suppress this shit ig? */ };
+                let Some(room) = room else { return };
+                let Some(room_member) = room.get_member_mut(&data.user) else { return };
+                room_member.connection.connected_chat = false;
+            }).filter(move |event| {
+                let res = event.room == id;
+                async move { res }
+            })
+        )
     }
 
-    async fn room_members<'ctx>(&self, ctx: &Context<'ctx>, id: Id<Room>) -> Result<impl Stream<Item = RoomMemberUpdate>> {
+    async fn room_members<'ctx>(&'ctx self, ctx: &Context<'ctx>, id: Id<Room>) -> Result<impl Stream<Item = RoomMemberUpdate> + 'ctx> {
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let Some(room) = room_store.get(&id)? else { return Err("Room not found".into()) };
-        ctx.require_act(RoomAction::SubscribeMembers, &room)?;
-        let id = id.clone();
-        Ok(OrbtStreamBroker::<RoomMemberUpdate>::subscribe().filter(move |event| {
-            let res = event.room == id;
-            async move { res }
-        }))
+        let user_store = ctx.data::<DataStore<User>>()?;
+
+        let Some(mut room) = room_store.get(&id)? else { return Err("Room not found".into()) };
+
+        let actor = ctx.require_act(RoomAction::SubscribeMembers, &room)?;
+        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+
+        let stream_ctl = ctx.data::<StreamController>()?;
+
+        let Some(room_member) = room.get_member_mut(&user.id) else { return Err("You are not a member of that room".into()) };
+        room_member.connection.connected_members = true;
+
+        let id = room.id.clone();
+        Ok(
+            stream_ctl.subscribe::<RoomMemberUpdate, _>(&user.id, &room.id, user_store.clone(), room_store.clone(), |data| {
+                // on disconnect
+                let Ok(room) = &mut data.room_store.get(&data.room) else { return /* suppress this shit ig? */ };
+                let Some(room) = room else { return };
+                let Some(room_member) = room.get_member_mut(&data.user) else { return };
+                room_member.connection.connected_members = false;
+            }).filter(move |event| {
+                let res = event.room == id;
+                async move { res }
+            })
+        )
     }
 
-    async fn room_remote<'ctx>(&self, ctx: &Context<'ctx>, id: Id<Room>) -> Result<impl Stream<Item = RoomRemoteUpdate>> {
+    async fn room_remote<'ctx>(&'ctx self, ctx: &Context<'ctx>, id: Id<Room>) -> Result<impl Stream<Item = RoomRemoteUpdate> + 'ctx> {
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let Some(room) = room_store.get(&id)? else { return Err("Room not found".into()) };
-        ctx.require_act(RoomAction::SubscribeRemote, &room)?;
-        let id = id.clone();
-        Ok(OrbtStreamBroker::<RoomRemoteUpdate>::subscribe().filter(move |event| {
-            let res = event.room == id;
-            async move { res }
-        }))
+        let user_store = ctx.data::<DataStore<User>>()?;
+
+        let Some(mut room) = room_store.get(&id)? else { return Err("Room not found".into()) };
+
+        let actor = ctx.require_act(RoomAction::SubscribeRemote, &room)?;
+        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+
+        let stream_ctl = ctx.data::<StreamController>()?;
+
+        let Some(room_member) = room.get_member_mut(&user.id) else { return Err("You are not a member of that room".into()) };
+        room_member.connection.connected_chat = true;
+
+        let id = room.id.clone();
+        Ok(
+            stream_ctl.subscribe::<RoomRemoteUpdate, _>(&user.id, &room.id, user_store.clone(), room_store.clone(), |data| {
+                // on disconnect
+                let Ok(room) = &mut data.room_store.get(&data.room) else { return /* suppress this shit ig? */ };
+                let Some(room) = room else { return };
+                let Some(room_member) = room.get_member_mut(&data.user) else { return };
+                room_member.connection.connected_remote = false;
+            }).filter(move |event| {
+                let res = event.room == id;
+                async move { res }
+            })
+        )
     }
 }
 

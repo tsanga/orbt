@@ -160,6 +160,10 @@ impl Room {
         self.members.iter().find(|m| &m.user == id)
     }
 
+    pub fn get_member_mut(&mut self, id: &Id<User>) -> Option<&mut RoomMember> {
+        self.members.iter_mut().find(|m| &m.user == id)
+    }
+
     pub fn create_invite(&mut self, user_id: Id<User>) -> Result<RoomInvite, Error> {
         if !self.is_member(&user_id) {
             return Err("User not in room".into())
@@ -210,6 +214,7 @@ pub struct RoomMember {
     #[graphql(skip)]
     pub user: Id<User>,
     pub color: Color,
+    pub connection: RoomMemberConnection,
     // todo connection shit
 }
 
@@ -218,6 +223,7 @@ impl RoomMember {
         Self {
             user,
             color: color.unwrap_or(room.pick_available_color()).into(),
+            connection: RoomMemberConnection::new(),
         }
     }
 }
@@ -228,6 +234,27 @@ impl RoomMember {
         let user_store = ctx.data::<DataStore<User>>()?;
         let user = user_store.get(&self.user)?.ok_or("User not found")?;
         Ok(user.clone())
+    }
+
+    async fn online(&self) -> bool {
+        self.connection.connected_chat || self.connection.connected_members || self.connection.connected_remote
+    }
+}
+
+#[derive(Debug, Clone, SimpleObject)]
+pub struct RoomMemberConnection {
+    pub connected_chat: bool,
+    pub connected_members: bool,
+    pub connected_remote: bool,
+}
+
+impl RoomMemberConnection {
+    fn new() -> Self {
+        Self {
+            connected_chat: false,
+            connected_members: false,
+            connected_remote: false,
+        }
     }
 }
 

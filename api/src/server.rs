@@ -8,6 +8,7 @@ use crate::model::room::Room;
 use crate::model::user::User;
 use crate::schema::{Query, Mutation, Subscription};
 use crate::store::DataStore;
+use crate::stream::StreamController;
 
 #[derive(Clone)]
 pub struct OrbtData {
@@ -15,7 +16,7 @@ pub struct OrbtData {
 }
 
 impl OrbtData {
-    pub fn new(user_store: DataStore<User>, room_store: DataStore<Room>) -> Self {
+    pub fn new(user_store: DataStore<User>, room_store: DataStore<Room>, stream_ctl: StreamController) -> Self {
         Self {
             schema: Schema::build(
                 Query::default(),
@@ -24,6 +25,7 @@ impl OrbtData {
             )
             .data(user_store)
             .data(room_store)
+            .data(stream_ctl)
             .finish()
         }
     }
@@ -64,7 +66,7 @@ pub async fn graphql_ws(
 
 /*
 {
-    payload: { Authorization:  }
+    payload: { Authorization: "<token>"  }
 }
 */
 async fn on_connection_init(user_store: web::Data<DataStore<User>>, value: serde_json::Value) -> async_graphql::Result<Data> {
