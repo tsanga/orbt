@@ -3,4 +3,4 @@
 .env
 /.vscode
 **/target
-schema.graphql
+orbt.graphql
