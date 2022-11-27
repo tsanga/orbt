@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use async_graphql::{SimpleObject, InputObject};
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
