@@ -1,3 +1,5 @@
+#![allow(dead_code)] // todo remove this at some point
+
 pub mod prelude {
     pub use anyhow::{anyhow, Result};
 }

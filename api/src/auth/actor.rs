@@ -38,6 +38,7 @@ impl Actor {
         action.can_act(&self, model)
     }
 
+    #[allow(dead_code)]
     pub fn is_user_or_internal(&self) -> bool {
         match self {
             Self::None => false,
@@ -46,6 +47,7 @@ impl Actor {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_user(&self) -> bool {
         match self {
             Self::User(_) => true,
@@ -53,6 +55,7 @@ impl Actor {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_internal(&self) -> bool {
         match self {
             Self::Internal => true,
@@ -60,6 +63,7 @@ impl Actor {
         }
     }
 
+    #[allow(dead_code)]
     pub fn as_user(&self) -> Option<User> {
         match self {
             Self::User(user) => Some(user.clone()),

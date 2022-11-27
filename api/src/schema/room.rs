@@ -1,7 +1,7 @@
 use async_graphql::*;
 use futures::{Stream, StreamExt};
 
-use crate::{model::{room::{Room, RoomMember, RoomChatMsg, RoomMemberUpdate, RoomRemoteUpdate}, user::User}, store::DataStore, types::{color::{Color, ColorType}, time::Time, token::Token, id::Id}, auth::{action::Action, authority::Authority, actor::Actor}, stream::StreamController};
+use crate::{model::{room::{Room, RoomMember, RoomChatMsg, RoomMemberUpdate, RoomRemoteUpdate}, user::User}, store::DataStore, types::{color::{Color, ColorType}, token::Token, id::Id}, auth::{action::Action, authority::Authority, actor::Actor}, stream::StreamController};
 
 #[derive(Default)]
 pub struct RoomQuery;
@@ -50,9 +50,10 @@ impl RoomQuery {
 
 #[Object]
 impl RoomMutation {
-    async fn create_room<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Room> {
+    async fn create_room<'ctx>(&self, ctx: &Context<'ctx>, name: Option<String>) -> Result<Room> {
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let room = Room::new();
+        let mut room = Room::new();
+        room.name = name;
         room_store.insert(room.clone());
         //ctx.require_act(RoomAction::Create, &room)?;
         Ok(room)
@@ -115,9 +116,10 @@ impl RoomMutation {
         Ok(room.clone())
     }
 
-    async fn join_room<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, invite_token: String, color: Option<ColorType>) -> Result<Room> {
+    async fn join_room<'ctx>(&self, ctx: &Context<'ctx>, invite_token: String, color: Option<ColorType>) -> Result<Room> {
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
+        let Some(room_id) = room_store.data.lock().unwrap().values().find(|r| r.check_invite(&invite_token)).map(|r| r.id.clone()) else { return Err("Room not found".into()) };
+        let Some(mut room) = room_store.get(&room_id)? else { return Err("Room not found".into()) };
 
         if !room.check_invite(&invite_token) { return Err("Invalid invite".into()) }
         if room.members.len() >= crate::model::room::MAX_ROOM_SIZE { return Err("Room is full".into()) }
@@ -126,7 +128,7 @@ impl RoomMutation {
         let room_member = room.join(&user, color)?;
 
         let stream_ctl = ctx.data::<StreamController>()?;
-        let room_member_update = RoomMemberUpdate::new_join(room.id.clone(), room_member, user);
+        let room_member_update = RoomMemberUpdate::new_join(room.id.clone(), room_member);
         stream_ctl.publish(room_member_update);
 
         Ok(room.clone())
@@ -142,7 +144,7 @@ impl RoomMutation {
         let room_member = room.leave(&user)?;
 
         let stream_ctl = ctx.data::<StreamController>()?;
-        let room_member_update = RoomMemberUpdate::new_leave(room.id.clone(), room_member, user.clone());
+        let room_member_update = RoomMemberUpdate::new_leave(room.id.clone(), room_member);
         stream_ctl.publish(room_member_update);
 
         Ok(user)
@@ -180,12 +182,14 @@ impl RoomSubscription {
         let actor = ctx.require_act(RoomAction::SubscribeChat, &room)?;
         let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
 
-        // TODO: check if user is already connected to room_chat
-
         let id = room.id.clone(); // room id
         let stream_ctl = ctx.data::<StreamController>()?;
 
         let Some(room_member) = room.get_member_mut(&user.id) else { return Err("You are not a member of that room".into()) };
+        if room_member.connection.connected_chat {
+            return Err("You are already subscribed to room_chat for this room".into())
+        }
+
         room_member.connection.connected_chat = true;
 
         Ok(
@@ -195,6 +199,9 @@ impl RoomSubscription {
                 let Some(room) = room else { return };
                 let Some(room_member) = room.get_member_mut(&data.user) else { return };
                 room_member.connection.connected_chat = false;
+                if !room_member.is_connected() {
+                    room_member.handle_disconnect(&data.room, stream_ctl);
+                }
             }).filter(move |event| {
                 let res = event.room == id;
                 async move { res }
@@ -214,6 +221,9 @@ impl RoomSubscription {
         let stream_ctl = ctx.data::<StreamController>()?;
 
         let Some(room_member) = room.get_member_mut(&user.id) else { return Err("You are not a member of that room".into()) };
+        if room_member.connection.connected_members {
+            return Err("You are already subscribed to room_members for this room".into())
+        }
         room_member.connection.connected_members = true;
 
         let id = room.id.clone();
@@ -224,6 +234,9 @@ impl RoomSubscription {
                 let Some(room) = room else { return };
                 let Some(room_member) = room.get_member_mut(&data.user) else { return };
                 room_member.connection.connected_members = false;
+                if !room_member.is_connected() {
+                    room_member.handle_disconnect(&data.room, stream_ctl);
+                }
             }).filter(move |event| {
                 let res = event.room == id;
                 async move { res }
@@ -243,6 +256,9 @@ impl RoomSubscription {
         let stream_ctl = ctx.data::<StreamController>()?;
 
         let Some(room_member) = room.get_member_mut(&user.id) else { return Err("You are not a member of that room".into()) };
+        if room_member.connection.connected_remote {
+            return Err("You are already subscribed to room_members for this room".into())
+        }
         room_member.connection.connected_chat = true;
 
         let id = room.id.clone();
@@ -253,6 +269,9 @@ impl RoomSubscription {
                 let Some(room) = room else { return };
                 let Some(room_member) = room.get_member_mut(&data.user) else { return };
                 room_member.connection.connected_remote = false;
+                if !room_member.is_connected() {
+                    room_member.handle_disconnect(&data.room, stream_ctl);
+                }
             }).filter(move |event| {
                 let res = event.room == id;
                 async move { res }
