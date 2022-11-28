@@ -15,8 +15,8 @@ export default function RoomPage() {
       <section className={styles.rightSection}>
         <RoomChatBox subheading={"Hello"} />
         <Suspense fallback={<Skeleton />}>
-          {/* @/ts-expect-error Server Component */}
-          {/* <RoomChatParticipants /> */}
+          {/* @ts-expect-error Server Component */}
+          <RoomChatParticipants />
         </Suspense>
       </section>
     </main>

@@ -2,6 +2,7 @@ import * as styles from "./chat-participants.css";
 
 import { UserDisplayPartial, Status } from "@domain/models";
 import RoomChatParticipant from "./chat-participant";
+import RoomChatParticipantInviteButton from "./chat-participant-invite";
 
 const getConnectedUsers = async (): Promise<UserDisplayPartial[]> => {
   // add fake delay
@@ -16,7 +17,7 @@ const getConnectedUsers = async (): Promise<UserDisplayPartial[]> => {
             status: Status.CONNECTED,
           },
           {
-            name: "onah_",
+            name: "jonah",
             profilePicture:
               "https://cdn.discordapp.com/avatars/120711274291003393/a3f8512ee6ca7d7c7948bca81db7c4e2.png",
             status: Status.AWAY,
@@ -60,6 +61,7 @@ export default async function RoomChatParticipants() {
         /* todo: change this for uid or some shit */
         <RoomChatParticipant {...user} key={user.name} />
       ))}
+      <RoomChatParticipantInviteButton />
     </aside>
   );
 }
