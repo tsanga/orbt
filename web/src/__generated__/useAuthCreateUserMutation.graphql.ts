@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<719f45f25b9386a7d73bc3c0fb98aa15>>
+ * @generated SignedSource<<c9249819189b72af0cbdecd6fd79fc5a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,8 +14,11 @@ export type useAuthCreateUserMutation$variables = {
 };
 export type useAuthCreateUserMutation$data = {
   readonly createUser: {
-    readonly id: number;
+    readonly id: any;
     readonly name: string;
+    readonly token: {
+      readonly token: string | null;
+    };
   };
 };
 export type useAuthCreateUserMutation = {
@@ -59,6 +62,24 @@ v1 = [
         "kind": "ScalarField",
         "name": "name",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "Token",
+        "kind": "LinkedField",
+        "name": "token",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "token",
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -82,16 +103,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "1c3d66c580bd9e5c9390b3de755a366d",
+    "cacheID": "2ff4ad163d21ec904e4df36ef198964e",
     "id": null,
     "metadata": {},
     "name": "useAuthCreateUserMutation",
     "operationKind": "mutation",
-    "text": "mutation useAuthCreateUserMutation(\n  $name: String\n) {\n  createUser(name: $name) {\n    id\n    name\n  }\n}\n"
+    "text": "mutation useAuthCreateUserMutation(\n  $name: String\n) {\n  createUser(name: $name) {\n    id\n    name\n    token {\n      token\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a67d18b8bc51f17bf14975763d152884";
+(node as any).hash = "f0f2ccc9d55d82b4244eeecea9367913";
 
 export default node;

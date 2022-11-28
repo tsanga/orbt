@@ -3,9 +3,10 @@ import { AppContext, AppDispatchContext } from "@/context";
 import { useMutation, graphql } from "react-relay";
 import type { useAuthCreateUserMutation as CreateEmptyUserMutation } from "@gql/useAuthCreateUserMutation.graphql";
 import { User } from "@domain/models";
+import { AuthUser } from "@/context";
 
 export type Auth = {
-  user: Partial<User> | null;
+  user: AuthUser | null;
   isLoggedIn: boolean;
 };
 
@@ -20,6 +21,9 @@ export default function useAuth(): Auth {
         createUser(name: $name) {
           id
           name
+          token {
+            token
+          }
         }
       }
     `
@@ -34,7 +38,10 @@ export default function useAuth(): Auth {
           variables: { name: "alex adewole" },
           onCompleted: (response) => {
             if (response.createUser) {
-              dispatch({ type: "setUser", user: response.createUser });
+              dispatch({
+                type: "SET_USER",
+                user: response.createUser as AuthUser,
+              });
             }
           },
           onError: (err) => {

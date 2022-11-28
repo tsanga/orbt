@@ -32,6 +32,7 @@ export const vars = createThemeContract({
     md: "",
     lg: "",
     xl: "",
+    xxl: "",
   },
   text: {
     xs: "",

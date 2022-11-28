@@ -34,6 +34,7 @@ export const darkThemeClass = createTheme(vars, {
     md: "1.5em",
     lg: "2em",
     xl: "2.5em",
+    xxl: "5em",
   },
   text: {
     xs: "0.5em",
