@@ -39,6 +39,8 @@ export const vars = createThemeContract({
     sm: "",
     md: "",
     lg: "",
+    xl: "",
+    xxl: "",
   },
   border: {
     solid: "",
