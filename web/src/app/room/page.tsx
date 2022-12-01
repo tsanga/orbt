@@ -10,7 +10,6 @@ import RoomCreateView from "./(view)/create/create-view";
 
 export default function RoomPage() {
   const roomContext = useContext(RoomContext);
-
   const creatingRoom = <RoomCreateView />;
 
   if (roomContext?.isCreatingRoom) {

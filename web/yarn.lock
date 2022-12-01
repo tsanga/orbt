@@ -1724,7 +1724,7 @@
     "@types/react" "*"
     "@types/relay-runtime" "*"
 
-"@types/react@*", "@types/react@18.0.25":
+"@types/react@*", "@types/react@18.0.25", "@types/react@^18.0.25":
   version "18.0.25"
   resolved "https://registry.npmjs.org/@types/react/-/react-18.0.25.tgz"
   integrity sha512-xD6c0KDT4m7n9uD4ZHi02lzskaiqcBxf4zi+tXZY98a04wvc0hi/TcCPC2FOESZi51Nd7tlUeOJY8RofL799/g==
@@ -5088,6 +5088,14 @@ rimraf@^3.0.2:
   integrity sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==
   dependencies:
     glob "^7.1.3"
+
+rsc-test-helper@^0.1.4:
+  version "0.1.4"
+  resolved "https://registry.yarnpkg.com/rsc-test-helper/-/rsc-test-helper-0.1.4.tgz#97a9bc2fa396b6e0043056142af5809e7a7609bc"
+  integrity sha512-xnSFDlecslZBxkkJow34ebYO+giJmewij0Y6YI7/p8ZK4yqWQIqxFjEElB9eO3l53CbSPg/1F12CgGmfvrs7Tw==
+  dependencies:
+    "@types/react" "^18.0.25"
+    react "^18.2.0"
 
 run-parallel@^1.1.9:
   version "1.2.0"
