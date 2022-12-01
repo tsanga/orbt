@@ -172,7 +172,8 @@ mod tests {
         let user_id = user.id.clone();
         let mut room = Room::new("test".to_string());
         let room_id = room.id.clone();
-        room.init_owner(&user, None).unwrap();
+        room.init_owner(&user);
+        room.join(&user, None).unwrap();
         room_store.insert(room);
         user_store.insert(user);
 

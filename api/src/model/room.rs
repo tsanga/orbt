@@ -65,11 +65,9 @@ impl Room {
         self.owner.is_some()
     }
 
-    pub fn init_owner(&mut self, owner: &User, color: Option<ColorType>) -> Result<RoomMember, Error> {
+    pub fn init_owner(&mut self, owner: &User) {
         self.set_owner(owner.id.clone());
         self.remote = Some(owner.id.clone());
-        let member = self.join(owner, color)?;
-        Ok(member)
     }
 
     pub fn set_name(&mut self, name: impl ToString) {
@@ -185,6 +183,16 @@ impl Room {
     pub fn check_invite(&self, token: impl ToString) -> bool {
         let token = token.to_string();
         self.invites.iter().any(|i| i.token.check(&token))
+    }
+
+    pub fn is_invited_or_owner(&self, user: &User, token: Option<String>) -> bool {
+        if let Some(token) = token {
+            return self.check_invite(token)
+        }
+        if self.is_owner(&user.id) {
+            return true
+        }
+        false
     }
 
     pub fn add_chat_msg(&mut self, chat: RoomChatMsg) {
@@ -362,7 +370,7 @@ mod tests {
         let mut room = Room::new("test".to_string());
         let owner = User::new("owner".into());
         let friend = User::new("friend".into());
-        room.init_owner(&owner, None).unwrap();
+        room.init_owner(&owner);
         room.join(&friend, None).unwrap();
         (room, owner, friend)
     }
@@ -371,7 +379,7 @@ mod tests {
     fn room_name() {
         let mut room = Room::new("test".into());
         let owner = User::new("owner".into());
-        room.init_owner(&owner, None).unwrap();
+        room.init_owner(&owner);
         assert_eq!(&room.name, "test");
     }
 

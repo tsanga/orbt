@@ -63,8 +63,8 @@ impl RoomMutation {
         });
         
         let mut room = Room::new(room_name);
-        
-        room.init_owner(&user, None)?;
+
+        room.init_owner(&user);
 
         room_store.insert(room.clone());
         Ok(room)
@@ -107,15 +107,26 @@ impl RoomMutation {
         Ok(room.clone())
     }
 
-    async fn join_room<'ctx>(&self, ctx: &Context<'ctx>, invite_token: String, color: Option<ColorType>) -> Result<Room> {
+    async fn join_room<'ctx>(&self, ctx: &Context<'ctx>, invite_token: Option<String>, color: Option<ColorType>) -> Result<Room> {
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let Some(room_id) = room_store.data.lock().unwrap().values().find(|r| r.check_invite(&invite_token)).map(|r| r.id.clone()) else { return Err("Room not found".into()) };
+
+        let user = ctx.actor_user()?;
+
+        let room_id = if let Some(invite_token) = invite_token {
+            room_store.data.lock().unwrap().values()
+            .find(|r| r.check_invite(&invite_token))
+            .map(|r| r.id.clone())
+            .ok_or::<async_graphql::Error>("Room not found".into())?
+        } else {
+            room_store.data.lock().unwrap().values()
+            .find(|r| r.is_owner(&user.id))
+            .map(|r| r.id.clone())
+            .ok_or::<async_graphql::Error>("You are not the owner of any room".into())?
+        };
+        
         let Some(mut room) = room_store.get(&room_id)? else { return Err("Room not found".into()) };
 
-        if !room.check_invite(&invite_token) { return Err("Invalid invite".into()) }
-        if room.members.len() >= crate::model::room::MAX_ROOM_SIZE { return Err("Room is full".into()) }
-        let actor = ctx.require_act(RoomAction::Join(&invite_token), &room)?;
-        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+        if room.members.len() >= crate::model::room::MAX_ROOM_SIZE { return Err("Room is full".into()) };
         let room_member = room.join(&user, color)?;
 
         let stream_ctl = ctx.data::<StreamController>()?;
