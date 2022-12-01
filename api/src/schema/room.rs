@@ -50,7 +50,7 @@ impl RoomQuery {
 
 #[Object]
 impl RoomMutation {
-    async fn create_room<'ctx>(&self, ctx: &Context<'ctx>, name: Option<String>, owner_color: Option<ColorType>) -> Result<Room> {
+    async fn create_room<'ctx>(&self, ctx: &Context<'ctx>, name: Option<String>) -> Result<Room> {
         let user = ctx.actor_user()?;
         let room_store = ctx.data::<DataStore<Room>>()?;
 
@@ -65,7 +65,7 @@ impl RoomMutation {
         });
 
         room.name = Some(name);
-        room.init_owner(&user, owner_color)?;
+        room.init_owner(&user, None)?;
 
         room_store.insert(room.clone());
         Ok(room)
