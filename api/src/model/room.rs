@@ -1,12 +1,11 @@
 
 use async_graphql::{SimpleObject, Error, Enum, ComplexObject, Context};
 
-use crate::{types::{time::Time, token::Token, color::{Color, ColorType}, id::{Id, UuidId, NumId}}, auth::authority::Authority, store::DataStore};
+use crate::{types::{time::Time, token::Token, color::{Color, ColorType}, id::{Id, UuidId, NumId}}, auth::authority::Authority, store::DataStore, stream::StreamController};
 
 use super::{user::User, Model};
 
 pub const MAX_ROOM_SIZE: usize = 5;
-pub const MAX_ROOM_NAME_LENGTH: usize = 20;
 pub const INVITE_EXPIRY_MINUTES: usize = 5;
 
 #[derive(Debug, Clone, SimpleObject)]
@@ -226,6 +225,15 @@ impl RoomMember {
             connection: RoomMemberConnection::new(),
         }
     }
+
+    pub fn handle_disconnect(&self, room_id: &Id<Room>, stream_ctl: &StreamController) {
+        let room_member_update = RoomMemberUpdate::new_leave(room_id.clone(), self.clone());
+        stream_ctl.publish(room_member_update);
+    }
+
+    pub fn is_connected(&self) -> bool {
+        self.connection.connected_chat || self.connection.connected_members || self.connection.connected_remote
+    }
 }
 
 #[ComplexObject]
@@ -237,7 +245,7 @@ impl RoomMember {
     }
 
     async fn online(&self) -> bool {
-        self.connection.connected_chat || self.connection.connected_members || self.connection.connected_remote
+        self.is_connected()
     }
 }
 
@@ -314,25 +322,22 @@ pub struct RoomMemberUpdate {
     pub room: Id<Room>,
     pub update_type: RoomMemberUpdateType,
     pub room_member: RoomMember,
-    pub user: User,
 }
 
 impl RoomMemberUpdate {
-    pub fn new_join(room: Id<Room>, room_member: RoomMember, user: User) -> Self {
+    pub fn new_join(room: Id<Room>, room_member: RoomMember) -> Self {
         Self {
             room,
             update_type: RoomMemberUpdateType::Join,
             room_member,
-            user,
         }
     }
 
-    pub fn new_leave(room: Id<Room>, room_member: RoomMember, user: User) -> Self {
+    pub fn new_leave(room: Id<Room>, room_member: RoomMember) -> Self {
         Self {
             room,
             update_type: RoomMemberUpdateType::Leave,
             room_member,
-            user,
         }
     }
 }

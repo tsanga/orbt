@@ -1,3 +1,5 @@
+#![allow(dead_code)] // todo remove this at some point
+
 mod auth;
 mod model;
 mod schema;

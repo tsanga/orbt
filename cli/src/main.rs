@@ -1,3 +1,5 @@
+#![allow(dead_code)] // todo remove this at some point
+
 mod cli;
 mod server;
 mod wizard;
