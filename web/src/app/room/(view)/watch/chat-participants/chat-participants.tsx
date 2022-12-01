@@ -2,6 +2,7 @@ import * as styles from "./chat-participants.css";
 
 import { UserDisplayPartial, Status } from "@domain/models";
 import RoomChatParticipant from "./chat-participant";
+import RoomChatParticipantInviteButton from "./chat-participant-invite";
 
 const getConnectedUsers = async (): Promise<UserDisplayPartial[]> => {
   // add fake delay
@@ -65,6 +66,7 @@ export default async function RoomChatParticipants() {
         /* todo: change this for uid or some shit */
         <RoomChatParticipant {...user} key={user.name} />
       ))}
+      <RoomChatParticipantInviteButton />
     </aside>
   );
 }
