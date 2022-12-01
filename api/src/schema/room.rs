@@ -54,17 +54,16 @@ impl RoomMutation {
         let user = ctx.actor_user()?;
         let room_store = ctx.data::<DataStore<Room>>()?;
 
-        let mut room = Room::new();
-
-        let name = name.unwrap_or_else(|| {
+        let room_name = name.unwrap_or_else(|| {
             if user.name.len() > 0 {
                 format!("{}'s room", user.name)
             } else {
                 "My Room".to_string()
             }
         });
-
-        room.name = Some(name);
+        
+        let mut room = Room::new(room_name);
+        
         room.init_owner(&user, None)?;
 
         room_store.insert(room.clone());
