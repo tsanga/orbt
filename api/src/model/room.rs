@@ -371,6 +371,7 @@ mod tests {
         let owner = User::new("owner".into());
         let friend = User::new("friend".into());
         room.init_owner(&owner);
+        room.join(&owner, None).unwrap();
         room.join(&friend, None).unwrap();
         (room, owner, friend)
     }
