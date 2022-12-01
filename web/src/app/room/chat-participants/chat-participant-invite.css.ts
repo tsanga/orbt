@@ -2,13 +2,6 @@ import * as theme from "@theme/theme.css";
 import { vars } from "@theme/contract.css";
 import { style, styleVariants, ComplexStyleRule } from "@vanilla-extract/css";
 
-
-export const buttonWrapper = style({
-    //background: "linear-gradient(90deg, #D478FF 0%, #7E59F6 59.5%, #503DC4 103.86%)",
-
-});
-
-
 export const button = style({
   width: "100%",
   paddingBottom: "100%",
