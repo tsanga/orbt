@@ -17,8 +17,6 @@ pub struct Room {
     pub members: Vec<RoomMember>,
     pub remote: Option<Id<User>>,
     pub messages: Vec<RoomChatMsg>,
-    //#[graphql(skip)] TODO: uncomment
-    pub create_token: Token,
     pub invites: Vec<RoomInvite>,
 }
 
@@ -59,7 +57,6 @@ impl Room {
             members: vec![],
             remote: None,
             messages: vec![],
-            create_token: Token::new(),
             invites: vec![],
         }
     }
@@ -70,10 +67,8 @@ impl Room {
 
     pub fn init_owner(&mut self, owner: &User, color: Option<ColorType>) -> Result<RoomMember, Error> {
         self.set_owner(owner.id.clone());
-        self.set_name(format!("{}'s Room", &owner.name));
         self.remote = Some(owner.id.clone());
         let member = self.join(owner, color)?;
-        self.create_token.invalidate();
         Ok(member)
     }
 

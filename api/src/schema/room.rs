@@ -50,33 +50,25 @@ impl RoomQuery {
 
 #[Object]
 impl RoomMutation {
-    async fn create_room<'ctx>(&self, ctx: &Context<'ctx>, name: Option<String>) -> Result<Room> {
+    async fn create_room<'ctx>(&self, ctx: &Context<'ctx>, name: Option<String>, owner_color: Option<ColorType>) -> Result<Room> {
+        let user = ctx.actor_user()?;
         let room_store = ctx.data::<DataStore<Room>>()?;
+
         let mut room = Room::new();
-        room.name = name;
+
+        let name = name.unwrap_or_else(|| {
+            if user.name.len() > 0 {
+                format!("{}'s room", user.name)
+            } else {
+                "My Room".to_string()
+            }
+        });
+
+        room.name = Some(name);
+        room.init_owner(&user, owner_color)?;
+
         room_store.insert(room.clone());
-        //ctx.require_act(RoomAction::Create, &room)?;
         Ok(room)
-    }
-
-    async fn init_room<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, owner: Id<User>, token: String, color: Option<ColorType>) -> Result<Room> {
-        let room_store = ctx.data::<DataStore<Room>>()?;
-        let user_store = ctx.data::<DataStore<User>>()?;
-
-        let mut room = room_store.get(&room)?.ok_or::<async_graphql::Error>("Room not found".into())?;
-        if room.is_init() {
-            return Err("Room already initialized".into());
-        }
-
-        if !room.create_token.check(token) {
-            return Err("Invalid create token".into());
-        }
-        
-        let user = user_store.get(&owner)?.ok_or::<async_graphql::Error>("User not found".into())?;
-        
-        room.init_owner(&*user, color)?;
-        
-        Ok(room.clone())
     }
 
     async fn send_chat_message<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, msg: String) -> Result<RoomChatMsg> {
@@ -284,7 +276,6 @@ impl RoomSubscription {
 pub enum RoomAction<'a> {
     Get,
     GetMember(&'a Id<User>),
-    //Create,
     SendChat,
     PassRemote(&'a Id<User>),
     Join(&'a str), // string: invite token
