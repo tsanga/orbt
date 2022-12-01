@@ -19,3 +19,8 @@ export enum Status {
   CONNECTING = "connecting",
   DISCONNECTED = "disconnected",
 }
+
+export type Room = {
+  id: string;
+  name: string;
+};

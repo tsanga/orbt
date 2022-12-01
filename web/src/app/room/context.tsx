@@ -1,5 +1,6 @@
 "use client";
 
+import { Room } from "@domain/models";
 import { createContext, Dispatch, useReducer } from "react";
 
 export const RoomContext = createContext<State | null>(null);
@@ -9,15 +10,16 @@ type Props = {
   children: React.ReactNode;
 };
 
-type State = {
+export type State = {
   isCreatingRoom: boolean;
   isJoiningRoom: boolean;
-  room?: string | null | undefined;
+  room?: Partial<Room> | null | undefined;
 };
 
-type Action =
+export type Action =
   | { type: "SET_IS_CREATING_ROOM"; isCreatingRoom: boolean }
-  | { type: "SET_IS_JOINING_ROOM"; isJoiningRoom: boolean };
+  | { type: "SET_IS_JOINING_ROOM"; isJoiningRoom: boolean }
+  | { type: "SET_ROOM"; room: Partial<Room> };
 
 const reducer = (state: State, action: Action) => {
   switch (action.type) {
@@ -26,6 +28,9 @@ const reducer = (state: State, action: Action) => {
     }
     case "SET_IS_JOINING_ROOM": {
       return { ...state, isJoiningRoom: action.isJoiningRoom };
+    }
+    case "SET_ROOM": {
+      return { ...state, room: action.room };
     }
   }
 };

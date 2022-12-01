@@ -15,7 +15,10 @@
     "src": "./src",
     "schema": "../api/orbt.graphql",
     "language": "typescript",
-    "artifactDirectory": "./src/__generated__"
+    "artifactDirectory": "./src/__generated__",
+    "customScalars": {
+      "Id": "string"
+    }
   },
   "dependencies": {
     "@next/font": "13.0.5-canary.6",

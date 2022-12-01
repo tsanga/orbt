@@ -10,6 +10,8 @@ export type Props = {
   buttonText?: React.ReactNode;
   placeholder?: string;
   onChange?: (value: string) => void;
+  onSubmit?: () => void;
+  isSubmitting?: boolean;
 };
 
 export default function InputButtonGroup({
@@ -20,6 +22,8 @@ export default function InputButtonGroup({
   buttonText,
   placeholder,
   onChange,
+  onSubmit,
+  isSubmitting,
 }: Props) {
   return (
     <div>
@@ -29,7 +33,9 @@ export default function InputButtonGroup({
           placeholder={placeholder}
           onChange={(event) => onChange?.(event.target.value)}
         ></input>
-        <button id={id}>{buttonText || "Send"}</button>
+        <button onClick={() => onSubmit?.()} id={id}>
+          {buttonText || "Send"}
+        </button>
       </div>
     </div>
   );

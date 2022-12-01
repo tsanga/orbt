@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c9249819189b72af0cbdecd6fd79fc5a>>
+ * @generated SignedSource<<ebbfe3b895e8e0915b0a1c784f1927e7>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,7 +14,7 @@ export type useAuthCreateUserMutation$variables = {
 };
 export type useAuthCreateUserMutation$data = {
   readonly createUser: {
-    readonly id: any;
+    readonly id: string;
     readonly name: string;
     readonly token: {
       readonly token: string | null;

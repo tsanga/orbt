@@ -4,6 +4,7 @@ import RoomChatBox from "./chat-box/chat-box";
 import RoomChatParticipants, {
   Skeleton,
 } from "./chat-participants/chat-participants";
+import { Suspense } from "react";
 
 export default function RoomWatchView() {
   return (
@@ -14,8 +15,8 @@ export default function RoomWatchView() {
       <section className={styles.rightSection}>
         <RoomChatBox subheading={"Hello"} />
         <Suspense fallback={<Skeleton />}>
-          {/* @/ts-expect-error Server Component */}
-          {/* <RoomChatParticipants /> */}
+          {/* @ts-expect-error Server Component */}
+          <RoomChatParticipants />
         </Suspense>
       </section>
     </main>
