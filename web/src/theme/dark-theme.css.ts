@@ -34,12 +34,15 @@ export const darkThemeClass = createTheme(vars, {
     md: "1.5em",
     lg: "2em",
     xl: "2.5em",
+    xxl: "5em",
   },
   text: {
     xs: "0.5em",
     sm: "0.8em",
     md: "1em",
     lg: "1.5em",
+    xl: "2em",
+    xxl: "2.5em",
   },
   border: {
     solid: "1.5px solid",

@@ -15,7 +15,7 @@ const nextConfig = {
   compiler: {
     relay: {
       src: "./src/",
-      schema: "../api/schema.graphql",
+      schema: "../api/orbt.graphql",
       language: "typescript",
       artifactDirectory: "./src/__generated__",
     },

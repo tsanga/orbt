@@ -2,30 +2,46 @@
 
 import { createContext, Dispatch, useReducer, useEffect } from "react";
 import { User } from "@domain/models";
-export const AppContext = createContext<State>({ user: null });
+export const AppContext = createContext<State>({
+  user: null,
+});
 export const AppDispatchContext = createContext<Dispatch<Action>>(() => {});
+
+export type AuthUser = Pick<User, "name" | "id" | "token">;
 
 type Props = {
   children: React.ReactNode;
 };
 
 export type State = {
-  user: Partial<User> | null;
+  user: AuthUser | null;
 };
 
-export type Action = { type: "setUser"; user: Partial<User> };
+export type Action = { type: "SET_USER"; user: AuthUser | null };
 
 const reducer = (state: State, action: Action): State => {
-  console.log("hi");
   switch (action.type) {
-    case "setUser":
-      console.log("set");
+    case "SET_USER":
       return { ...state, user: action.user };
   }
 };
 
+const getUserFromLocalStorage = (): AuthUser | null => {
+  if (typeof window === "undefined") return null;
+
+  let user: string | object | null = localStorage.getItem("user");
+
+  if (user) {
+    return JSON.parse(user) as AuthUser;
+  }
+
+  return null;
+};
+
 export default function AppContextWrapper({ children }: Props) {
-  const [state, dispatch] = useReducer(reducer, { user: null });
+  const [state, dispatch] = useReducer(reducer, {
+    user: getUserFromLocalStorage(),
+  });
 
   return (
     <AppContext.Provider value={state}>

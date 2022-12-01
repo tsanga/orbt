@@ -45,6 +45,18 @@ export const textColor = styleVariants(
     )
 );
 
+type TextSize = keyof typeof vars.text;
+export const text = styleVariants(
+  Object.keys(vars.text)
+    .map((x) => x as TextSize)
+    .reduce(
+      (x: { [key: string]: ComplexStyleRule }, c: TextSize) => (
+        (x[c] = { fontSize: vars.text[c] }), x
+      ),
+      {}
+    )
+);
+
 const buttonBase = style({
   background: "none",
   padding: "8px 12px",
