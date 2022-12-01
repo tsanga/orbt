@@ -14,13 +14,14 @@ import {
 const IS_SERVER = typeof window === typeof undefined;
 const CACHE_TTL = 5 * 1000; // 5 seconds, to resolve preloaded results
 
-function fetchQuery(operation: any, variables: any) {
+function fetchQuery(operation: any, variables: any, extendHeaders: any) {
   return fetch("http://localhost:8080/", {
     method: "POST",
     headers: {
       // Add authentication and other headers here
       Accept: "application/json",
       "content-type": "application/json",
+      ...extendHeaders,
     },
     body: JSON.stringify({
       id: operation.id,
@@ -40,7 +41,7 @@ export const responseCache: QueryResponseCache | null = IS_SERVER
       ttl: CACHE_TTL,
     });
 
-function createNetwork() {
+function createNetwork(extendHeaders: any) {
   async function fetchResponse(
     params: RequestParameters,
     variables: Variables,
@@ -56,7 +57,7 @@ function createNetwork() {
       }
     }
 
-    return fetchQuery(params, variables);
+    return fetchQuery(params, variables, extendHeaders);
   }
   const network = Network.create(fetchResponse);
   return network;
@@ -64,11 +65,12 @@ function createNetwork() {
 
 // Export a singleton instance of Relay Environment configured with our network function:
 export default function getEnvironment(
-  extendConfig: Partial<EnvironmentConfig> = {}
+  extendConfig: Partial<EnvironmentConfig> = {},
+  extendHeaders: any = {}
 ) {
   return new Environment({
     ...extendConfig,
-    network: createNetwork(),
+    network: createNetwork(extendHeaders),
     store: new Store(RecordSource.create()),
   });
 }

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ebbfe3b895e8e0915b0a1c784f1927e7>>
+ * @generated SignedSource<<7f383d3c4e0dff6daa5a3dd2efa921c6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,10 +9,10 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
-export type useAuthCreateUserMutation$variables = {
+export type contextCreateUserMutation$variables = {
   name?: string | null;
 };
-export type useAuthCreateUserMutation$data = {
+export type contextCreateUserMutation$data = {
   readonly createUser: {
     readonly id: string;
     readonly name: string;
@@ -21,9 +21,9 @@ export type useAuthCreateUserMutation$data = {
     };
   };
 };
-export type useAuthCreateUserMutation = {
-  response: useAuthCreateUserMutation$data;
-  variables: useAuthCreateUserMutation$variables;
+export type contextCreateUserMutation = {
+  response: contextCreateUserMutation$data;
+  variables: contextCreateUserMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -90,7 +90,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "useAuthCreateUserMutation",
+    "name": "contextCreateUserMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -99,20 +99,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "useAuthCreateUserMutation",
+    "name": "contextCreateUserMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "2ff4ad163d21ec904e4df36ef198964e",
+    "cacheID": "7d8373370fb403fc92a58e27f9ac5d5d",
     "id": null,
     "metadata": {},
-    "name": "useAuthCreateUserMutation",
+    "name": "contextCreateUserMutation",
     "operationKind": "mutation",
-    "text": "mutation useAuthCreateUserMutation(\n  $name: String\n) {\n  createUser(name: $name) {\n    id\n    name\n    token {\n      token\n    }\n  }\n}\n"
+    "text": "mutation contextCreateUserMutation(\n  $name: String\n) {\n  createUser(name: $name) {\n    id\n    name\n    token {\n      token\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f0f2ccc9d55d82b4244eeecea9367913";
+(node as any).hash = "06852e186fc697b3b2ac206ecf0a78ed";
 
 export default node;

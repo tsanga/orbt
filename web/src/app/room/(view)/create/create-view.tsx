@@ -20,9 +20,6 @@ export default function RoomCreateView() {
         createRoom(name: $name) {
           id
           name
-          createToken {
-            token
-          }
         }
       }
     `
@@ -49,7 +46,7 @@ export default function RoomCreateView() {
         id="set-room-name"
         placeholder="ymcmb"
         buttonText="Create"
-        onChange={(value) => setRoomName(value)}
+        onChange={(value) => setRoomName(value.trim())}
         onSubmit={create}
       />
     </IsolatedForm>

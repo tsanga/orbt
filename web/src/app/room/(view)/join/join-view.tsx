@@ -6,11 +6,19 @@ import IsolatedForm from "@/room/(shared)/isolated-form";
 import InputButtonGroup from "@/(reusable)/input-button-group";
 import { useState } from "react";
 import useRoomContext from "@hooks/use-room-context";
+import { useMutation, graphql } from "react-relay";
 
 export default function RoomJoinView() {
   const [state, dispatch] = useRoomContext();
   const { user } = useAuth();
   const [name, setName] = useState(user?.name);
+
+  const [commitMutation, _] = useMutation<joinViewRoomMutation>(graphql`
+    mutation joinViewRoomMutation($name: String, $roomId: ID) {
+        joinRoom(name: $name, roomId: $roomId) {
+            
+        }
+    }`);
 
   const join = () => {};
 

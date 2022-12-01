@@ -12,22 +12,23 @@ export type State = {
   environment: Environment;
 };
 
-export type Action = { type: "setEnvironment"; environment: Environment };
+export type Action = { type: "SET_ENVIRONMENT"; environment: Environment };
 
 type Props = {
   children: React.ReactNode;
 };
 
 const reducer = (state: State, action: Action): State => {
-  console.log("hi");
   switch (action.type) {
-    case "setEnvironment":
-      console.log("setEnv");
+    case "SET_ENVIRONMENT":
+      console.log(
+        `relay env changed from ${state.environment.configName} to ${action.environment.configName}`
+      );
       return { ...state, environment: action.environment };
   }
 };
 
-const environment = createEnvironment({ configName: "root-environment" });
+const environment = createEnvironment({ configName: "root-anon-environment" });
 
 export default function RelayEnvironmentProviderWrapper({ children }: Props) {
   const [state, dispatch] = useReducer(reducer, {

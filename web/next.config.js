@@ -18,7 +18,7 @@ const nextConfig = {
       schema: "../api/orbt.graphql",
       language: "typescript",
       artifactDirectory: "./src/__generated__",
-      customScalars: { "Id": "string" }
+      customScalars: { Id: "string" },
     },
   },
   output: "standalone",
