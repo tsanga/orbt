@@ -12,13 +12,11 @@ pub const INVITE_EXPIRY_MINUTES: usize = 5;
 #[graphql(complex)]
 pub struct Room {
     pub id: Id<Self>,
-    pub name: Option<String>,
+    pub name: String,
     pub owner: Option<Id<User>>,
     pub members: Vec<RoomMember>,
     pub remote: Option<Id<User>>,
     pub messages: Vec<RoomChatMsg>,
-    //#[graphql(skip)] TODO: uncomment
-    pub create_token: Token,
     pub invites: Vec<RoomInvite>,
 }
 
@@ -51,34 +49,31 @@ impl Room {
 }
 
 impl Room {
-    pub fn new() -> Self {
+    pub fn new(name: String) -> Self {
         Self {
             id: Id::new(),
-            name: None,
+            name,
             owner: None,
             members: vec![],
             remote: None,
             messages: vec![],
-            create_token: Token::new(),
             invites: vec![],
         }
     }
 
     pub fn is_init(&self) -> bool {
-        self.name.is_some() && self.owner.is_some()
+        self.owner.is_some()
     }
 
     pub fn init_owner(&mut self, owner: &User, color: Option<ColorType>) -> Result<RoomMember, Error> {
         self.set_owner(owner.id.clone());
-        self.set_name(format!("{}'s Room", &owner.name));
         self.remote = Some(owner.id.clone());
         let member = self.join(owner, color)?;
-        self.create_token.invalidate();
         Ok(member)
     }
 
     pub fn set_name(&mut self, name: impl ToString) {
-        self.name = Some(name.to_string());
+        self.name = name.to_string();
     }
 
     pub fn set_owner(&mut self, owner: Id<User>) {
@@ -364,12 +359,20 @@ mod tests {
     use super::*;
 
     fn create_room_with_members() -> (Room, User, User) {
-        let mut room = Room::new();
+        let mut room = Room::new("test".to_string());
         let owner = User::new("owner".into());
         let friend = User::new("friend".into());
         room.init_owner(&owner, None).unwrap();
         room.join(&friend, None).unwrap();
         (room, owner, friend)
+    }
+
+    #[test]
+    fn room_name() {
+        let mut room = Room::new("test".into());
+        let owner = User::new("owner".into());
+        room.init_owner(&owner, None).unwrap();
+        assert_eq!(&room.name, "test");
     }
 
     #[test]
