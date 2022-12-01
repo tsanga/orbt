@@ -1,12 +1,16 @@
 export type User = {
+  id: string;
   name: string;
-  profilePicture: string;
-  status: Status;
+  status?: string;
+  profilePicture?: string;
+  token?: {
+    token?: string;
+  };
 };
 
 export type UserDisplayPartial = Pick<
   User,
-  "name" | "profilePicture" | "status"
+  "id" | "name" | "profilePicture" | "status"
 >;
 
 export enum Status {

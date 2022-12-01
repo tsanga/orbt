@@ -36,7 +36,11 @@ pub fn get_spinner(do_tick: bool) -> ProgressBar {
         ProgressStyle::with_template("{spinner:.magenta}{msg:.bold} {elapsed:.magenta.dim}")
             .unwrap()
             .tick_strings(&[
-                "⠋ ", "⠙ ", "⠹ ", "⠸ ", "⠼ ", "⠴ ", "⠦ ", "⠧ ", "⠇ ", "⠏ ", "",
+                "| ",
+                "/ ",
+                "- ",
+                "\\ ",
+                "",
             ]),
     );
 

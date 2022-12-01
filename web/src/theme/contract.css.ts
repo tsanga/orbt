@@ -32,12 +32,15 @@ export const vars = createThemeContract({
     md: "",
     lg: "",
     xl: "",
+    xxl: "",
   },
   text: {
     xs: "",
     sm: "",
     md: "",
     lg: "",
+    xl: "",
+    xxl: "",
   },
   border: {
     solid: "",

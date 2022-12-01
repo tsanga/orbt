@@ -4,9 +4,10 @@ import * as theme from "@theme/theme.css";
 import { lightThemeClass } from "@theme/light-theme.css";
 import { darkThemeClass } from "@theme/dark-theme.css";
 import "reset-css/reset.css";
+import RelayEnvironmentProviderWrapper from "./util/relay-environment-provider-wrapper";
+import AppContextWrapper from "./context";
 
 const inter = Inter();
-
 export default function RootLayout({
   children,
 }: {
@@ -23,7 +24,9 @@ export default function RootLayout({
       <body
         className={`${themeClass} ${theme.background.primary} ${theme.textColor.primary}`}
       >
-        {children}
+        <RelayEnvironmentProviderWrapper>
+          <AppContextWrapper>{children}</AppContextWrapper>
+        </RelayEnvironmentProviderWrapper>
       </body>
     </html>
   );

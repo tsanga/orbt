@@ -16,12 +16,14 @@ use actix_web::{
     App, HttpServer,
 };
 
+use actix_cors::Cors;
+
 pub mod prelude {
     pub use anyhow::{anyhow, Result};
 }
 
 use async_graphql::Schema;
-use model::{user::User, room::Room};
+use model::{room::Room, user::User};
 use store::DataStore;
 use stream::StreamController;
 
@@ -32,7 +34,8 @@ where
     let user_store = DataStore::<User>::new();
     let room_store = DataStore::<Room>::new();
     let stream_ctl = StreamController::new();
-    let orbt_data = server::OrbtData::new(user_store.clone(), room_store.clone(), stream_ctl.clone());
+    let orbt_data =
+        server::OrbtData::new(user_store.clone(), room_store.clone(), stream_ctl.clone());
     let address = std::env::var("ADDRESS").unwrap_or("0.0.0.0".to_string());
     let port = std::env::var("PORT").unwrap_or("8080".to_string());
 
@@ -58,6 +61,12 @@ where
 
     let server = HttpServer::new(move || {
         App::new()
+            .wrap(
+                Cors::default()
+                    .allow_any_header()
+                    .allow_any_method()
+                    .allow_any_origin(),
+            )
             .app_data(Data::new(orbt_data.clone()))
             .app_data(Data::new(user_store.clone()))
             .app_data(Data::new(room_store.clone()))
