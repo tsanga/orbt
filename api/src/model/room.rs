@@ -82,14 +82,18 @@ impl Room {
         if self.members.iter().any(|m| m.user == user.id) {
             return Err("User already in room".into());
         }
-        // todo: check if color is available, if not return err
+        if let Some(color) = color {
+            if !self.is_color_available(color) {
+                return Err("Color not available.".into());
+            }
+        }
         let member = RoomMember::new(user.id.clone(), &self, color);
         self.members.push(member.clone());
         Ok(member)
     }
 
-    pub fn leave(&mut self, user: &User) -> Result<RoomMember, Error> {
-        if let Some(index) = self.members.iter().position(|m| m.user == user.id) {
+    pub fn leave(&mut self, user: &Id<User>) -> Result<RoomMember, Error> {
+        if let Some(index) = self.members.iter().position(|m| &m.user == user) {
             let room_member = self.members.remove(index);
             return Ok(room_member);
         }
@@ -98,6 +102,10 @@ impl Room {
 
     pub fn is_member(&self, id: &Id<User>) -> bool {
         self.members.iter().any(|m| &m.user == id)
+    }
+
+    pub fn is_connected(&self, id: &Id<User>) -> bool {
+        self.get_member(id).map(|m| m.is_connected()).unwrap_or(false)
     }
 
     pub fn is_owner(&self, id: &Id<User>) -> bool {
@@ -210,6 +218,17 @@ impl Room {
     }
 }
 
+// helpers
+impl Room {
+    pub fn any_room<F: Fn(&Room) -> bool>(room_store: &DataStore<Room>, func: F) -> bool {
+        room_store.data.lock().unwrap().values().any(|r| func(r))
+    }
+
+    pub fn find_room<F: Fn(&Room) -> bool>(room_store: &DataStore<Room>, func: F) -> Option<Room> {
+        room_store.data.lock().unwrap().values().find(|r| func(r)).cloned()
+    }
+}
+
 #[derive(Debug, Clone, SimpleObject)]
 #[graphql(complex)]
 pub struct RoomMember {
@@ -217,7 +236,6 @@ pub struct RoomMember {
     pub user: Id<User>,
     pub color: Color,
     pub connection: RoomMemberConnection,
-    // todo connection shit
 }
 
 impl RoomMember {
@@ -395,7 +413,7 @@ mod tests {
     #[test]
     fn room_leave() {
         let (mut room, owner, friend) = create_room_with_members();
-        room.leave(&friend).unwrap();
+        room.leave(&friend.id).unwrap();
         assert_eq!(room.members.len(), 1);
         assert!(room.is_member(&owner.id));
         assert!(!room.is_member(&friend.id));

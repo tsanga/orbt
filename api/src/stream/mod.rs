@@ -190,7 +190,7 @@ mod tests {
                 move |data| {
                     let room = &mut data.room_store.get(&data.room).unwrap().unwrap();
                     let user = &data.user_store.get(&data.user).unwrap().unwrap();
-                    room.leave(&user).unwrap();
+                    room.leave(&user.id).unwrap();
                     //println!("dropped");
                     assert!(!room.is_member(&user.id))
                 },

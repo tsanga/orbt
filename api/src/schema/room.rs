@@ -54,9 +54,13 @@ impl RoomMutation {
         let user = ctx.actor_user()?;
         let room_store = ctx.data::<DataStore<Room>>()?;
 
+        if Room::any_room(room_store, |r| r.is_owner(&user.id)) {
+            return Err("You have already created a room".into());
+        }
+
         let room_name = name.unwrap_or_else(|| {
             if user.name.len() > 0 {
-                format!("{}'s room", user.name)
+                format!("{}'s Room", user.name)
             } else {
                 "My Room".to_string()
             }
@@ -112,6 +116,10 @@ impl RoomMutation {
 
         let user = ctx.actor_user()?;
 
+        if Room::any_room(room_store, |r| r.is_member(&user.id)) {
+            return Err("You are already a member of another room".into());
+        }
+
         let room_id = if let Some(invite_token) = invite_token {
             room_store.data.lock().unwrap().values()
             .find(|r| r.check_invite(&invite_token))
@@ -143,7 +151,7 @@ impl RoomMutation {
         if room.members.len() >= crate::model::room::MAX_ROOM_SIZE { return Err("Room is full".into()) }
         let actor = ctx.require_act(RoomAction::Leave, &room)?;
         let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
-        let room_member = room.leave(&user)?;
+        let room_member = room.leave(&user.id)?;
 
         let stream_ctl = ctx.data::<StreamController>()?;
         let room_member_update = RoomMemberUpdate::new_leave(room.id.clone(), room_member);
@@ -169,6 +177,22 @@ impl RoomMutation {
 
         ctx.require_act(RoomAction::RevokeInvite(&invite), &room)?;
         room.revoke_invite(&invite)?;
+
+        Ok(room.clone())
+    }
+
+    async fn kick_member<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>, member: Id<User>) -> Result<Room> {
+        let room_store = ctx.data::<DataStore<Room>>()?;
+        let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
+
+        ctx.require_act(RoomAction::KickMember(&member), &room)?;
+        if room.is_owner(&member) { return Err("You cannot kick the owner of the room".into()) }
+
+        let room_member = room.leave(&member)?;
+
+        let stream_ctl = ctx.data::<StreamController>()?;
+        let room_member_update = RoomMemberUpdate::new_leave(room.id.clone(), room_member);
+        stream_ctl.publish(room_member_update);
 
         Ok(room.clone())
     }
@@ -292,6 +316,7 @@ pub enum RoomAction<'a> {
     Leave,
     CreateInvite,
     RevokeInvite(&'a str), // string: invite token
+    KickMember(&'a Id<User>),
     SubscribeChat,
     SubscribeMembers,
     SubscribeRemote,
@@ -325,7 +350,10 @@ impl<'a> Action<Room> for RoomAction<'a> {
                         let is_owner_or_created_invite = room.is_owner(&user.id) || room.invites.iter().any(|i| i.inviter == user.id);
                         
                         invite_exists && is_member_or_owner && is_owner_or_created_invite
-                    }
+                    },
+                    Self::KickMember(id) => {
+                        room.is_owner(&user.id) && room.is_member(id)
+                    },
                 }
             }
         }
