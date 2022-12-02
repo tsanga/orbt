@@ -10,7 +10,7 @@ on:
       - ".github/workflows/api.yml"
 jobs:
   cargo:
-    name: "api: cargo check & test"
+    name: "api: cargo test"
     runs-on: ubuntu-latest
     defaults:
       run:
