@@ -254,6 +254,10 @@ impl RoomMember {
         let user = user_store.get(&self.user)?.ok_or("User not found")?;
         Ok(user.clone())
     }
+
+    async fn id<'ctx>(&'ctx self) -> &'ctx Id<User> {
+        &self.user
+    }
 }
 
 #[derive(Debug, Clone, SimpleObject)]

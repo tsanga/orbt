@@ -112,8 +112,7 @@ impl RoomMutation {
         let room_store = ctx.data::<DataStore<Room>>()?;
         let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
 
-        let actor = ctx.require_act(RoomAction::SendChat, &room)?;
-        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+        let user = ctx.require_act(RoomAction::SendChat, &room)?.user(ctx)?;
 
         let room_chat_msg = room.create_chat_msg(&user, msg)?;
 
@@ -134,8 +133,8 @@ impl RoomMutation {
         let room_store = ctx.data::<DataStore<Room>>()?;
         let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
 
-        let actor = ctx.require_act(RoomAction::PassRemote(&to_user), &room)?;
-        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+        let user = ctx.require_act(RoomAction::PassRemote(&to_user), &room)?.user(ctx)?;
+
         if !room.is_member(&user.id) {
             return Err("You are not a member of that room".into());
         }
@@ -157,11 +156,9 @@ impl RoomMutation {
         invite_token: Option<String>,
         color: Option<ColorType>,
     ) -> Result<Room> {
-        let user_store = ctx.data::<DataStore<User>>()?;
         let room_store = ctx.data::<DataStore<Room>>()?;
 
-        let user_id = ctx.actor_user()?.id;
-        let user = user_store.get(&user_id)?.ok_or("User not found")?;
+        let user = ctx.actor_user()?;
 
         if user.name.len() == 0 {
             return Err("You must set a name before joining a room".into());
@@ -225,15 +222,14 @@ impl RoomMutation {
         stream_ctl.disconnect(&user.id);
         stream_ctl.publish(room.clone());
 
-        Ok(user)
+        Ok(user.clone())
     }
 
     async fn create_room_invite<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>) -> Result<Token> {
         let room_store = ctx.data::<DataStore<Room>>()?;
         let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
 
-        let actor = ctx.require_act(RoomAction::CreateInvite, &room)?;
-        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+        let user = ctx.require_act(RoomAction::CreateInvite, &room)?.user(ctx)?;
         let room_invite = room.create_invite(user.id.clone())?;
 
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
@@ -296,8 +292,7 @@ impl RoomSubscription {
         let room_store = ctx.data::<DataStore<Room>>()?;
         let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
 
-        let actor = ctx.require_act(RoomAction::SubscribeChat, &room)?;
-        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+        let user = ctx.require_act(RoomAction::SubscribeChat, &room)?.user(ctx)?;
 
         let room_id = room.id.clone(); // room id
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
@@ -383,35 +378,35 @@ impl<'a> Action<Room> for RoomAction<'a> {
         match actor {
             Actor::None => false,
             Actor::Internal => true,
-            Actor::User(user) => match self {
+            Actor::User(user_id) => match self {
                 Self::Get
                 | Self::SendChat
                 | Self::SubscribeChat
                 | Self::SubscribeMembers
                 | Self::SubscribeRemote
-                | Self::Leave => room.is_member(&user.id),
-                Self::GetMember(id) => room.is_member(&user.id) && room.is_member(id),
-                Self::PassRemote(to_user_id) => room.can_pass_remote(&user.id, to_user_id),
+                | Self::Leave => room.is_member(user_id),
+                Self::GetMember(id) => room.is_member(user_id) && room.is_member(id),
+                Self::PassRemote(to_user_id) => room.can_pass_remote(user_id, to_user_id),
                 Self::Join(token) => {
                     room.check_invite(token)
                         && room.members.len() < crate::model::room::MAX_ROOM_SIZE
                 }
                 Self::CreateInvite => {
-                    room.is_member(&user.id)
+                    room.is_member(user_id)
                         && !room
                             .invites
                             .iter()
-                            .any(|i| i.inviter == user.id && i.token.is_valid())
+                            .any(|i| &i.inviter == user_id && i.token.is_valid())
                 }
                 Self::RevokeInvite(token) => {
                     let invite_exists = room.invites.iter().any(|i| i.token.check(&token));
-                    let is_member_or_owner = room.is_member(&user.id) || room.is_owner(&user.id);
-                    let is_owner_or_created_invite = room.is_owner(&user.id)
-                        || room.invites.iter().any(|i| i.inviter == user.id);
+                    let is_member_or_owner = room.is_member(user_id) || room.is_owner(user_id);
+                    let is_owner_or_created_invite = room.is_owner(user_id)
+                        || room.invites.iter().any(|i| &i.inviter == user_id);
 
                     invite_exists && is_member_or_owner && is_owner_or_created_invite
                 }
-                Self::KickMember(id) => room.is_owner(&user.id) && room.is_member(id),
+                Self::KickMember(id) => room.is_owner(user_id) && room.is_member(id),
             },
         }
     }

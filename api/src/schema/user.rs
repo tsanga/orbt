@@ -17,7 +17,7 @@ impl UserQuery {
 
     async fn me<'ctx>(&self, ctx: &Context<'ctx>) -> Result<User> {
         let user = ctx.actor_user()?;
-        Ok(user)
+        Ok(user.clone())
     }
 }
 
@@ -32,10 +32,7 @@ impl UserMutation {
     }
     
     async fn set_user_name<'ctx>(&self, ctx: &Context<'ctx>, name: String) -> Result<User> {
-        let user_id = ctx.actor_user()?.id;
-        let user_store = ctx.data::<DataStore<User>>()?;
-
-        let mut user = user_store.get(&user_id)?.ok_or::<async_graphql::Error>("User not found".into())?;
+        let mut user = ctx.actor_user()?;
         user.name = name;
         // saved implicitly when dropped
         Ok(user.clone())

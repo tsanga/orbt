@@ -16,7 +16,7 @@ impl<M: Model> DataStore<M> {
         }
     }
 
-    pub fn get<'a, I: ToId<M>>(&'a self, id: &'a I) -> Result<Option<DataStoreEntry<'a, M>>, <<M as Model>::Id as IdType>::Error> {
+    pub fn get<'a>(&'a self, id: impl ToId<M>) -> Result<Option<DataStoreEntry<'a, M>>, <<M as Model>::Id as IdType>::Error> {
         let mut lock = self.data.lock().unwrap();
         let id = id.to_id()?;
         let item = lock.remove(&id);
