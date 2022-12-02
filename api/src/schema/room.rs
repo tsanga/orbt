@@ -157,9 +157,11 @@ impl RoomMutation {
         invite_token: Option<String>,
         color: Option<ColorType>,
     ) -> Result<Room> {
+        let user_store = ctx.data::<DataStore<User>>()?;
         let room_store = ctx.data::<DataStore<Room>>()?;
 
-        let user = ctx.actor_user()?;
+        let user_id = ctx.actor_user()?.id;
+        let user = user_store.get(&user_id)?.ok_or("User not found")?;
 
         if user.name.len() == 0 {
             return Err("You must set a name before joining a room".into());
