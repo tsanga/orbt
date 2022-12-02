@@ -202,18 +202,25 @@ impl RoomMutation {
         Ok(room.clone())
     }
 
-    async fn leave_room<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>) -> Result<User> {
+    async fn leave_room<'ctx>(&self, ctx: &Context<'ctx>) -> Result<User> {
+        let user = ctx.actor_user()?;
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
+        let room_id = room_store.data.lock().unwrap()
+            .values()
+            .find(|r| r.is_member(&user.id))
+            .map(|r| r.id.clone())
+            .ok_or::<async_graphql::Error>("You are not in a room".into())?;
+
+        let Some(mut room) = room_store.get(&room_id)? else { return Err("Room not found".into()) };
 
         if room.members.len() >= crate::model::room::MAX_ROOM_SIZE {
             return Err("Room is full".into());
         }
-        let actor = ctx.require_act(RoomAction::Leave, &room)?;
-        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+        ctx.require_act(RoomAction::Leave, &room)?;
         room.leave(&user.id)?;
 
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
+        stream_ctl.disconnect(&user.id);
         stream_ctl.publish(room.clone());
 
         Ok(user)
