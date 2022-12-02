@@ -340,6 +340,11 @@ impl Subscriber<User, Room> for UserRoomSubscriber {
         let Ok(Some(mut room)) = self.room_store.get(&self.room) else { return };
         let Some(room_member) = room.get_member_mut(&self.user) else { return };
         room_member.connected = false;
+        if let Some(remote) = room.remote.as_ref() {
+            if remote == &self.user {
+                room.remote = room.owner.clone();
+            }
+        }
         self.stream_ctl.publish(room.clone())
     }
 
