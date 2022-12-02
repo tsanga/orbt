@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ed6bb20f84da6df300e41080b7396072>>
+ * @generated SignedSource<<3495e7cc206e3d1433ecb643cde58123>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,7 @@
 import { Fragment, ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type chatParticipants$data = {
+  readonly id: string;
   readonly members: ReadonlyArray<{
     readonly color: {
       readonly hex: string;
@@ -27,12 +28,21 @@ export type chatParticipants$key = {
   readonly " $fragmentSpreads": FragmentRefs<"chatParticipants">;
 };
 
-const node: ReaderFragment = {
+const node: ReaderFragment = (function(){
+var v0 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+};
+return {
   "argumentDefinitions": [],
   "kind": "Fragment",
   "metadata": null,
   "name": "chatParticipants",
   "selections": [
+    (v0/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -74,13 +84,7 @@ const node: ReaderFragment = {
               "name": "name",
               "storageKey": null
             },
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "id",
-              "storageKey": null
-            }
+            (v0/*: any*/)
           ],
           "storageKey": null
         }
@@ -91,7 +95,8 @@ const node: ReaderFragment = {
   "type": "Room",
   "abstractKey": null
 };
+})();
 
-(node as any).hash = "0976b20272d1feffa3a56639464d9404";
+(node as any).hash = "0c929a01ac543072f9bd91d864c6a054";
 
 export default node;

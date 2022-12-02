@@ -37,29 +37,35 @@ export type State = {
 export type Action = { type: "SET_USER"; user: AuthUser | null };
 
 const reducer = (state: State, action: Action): State => {
+  let toReturn;
+
   switch (action.type) {
     case "SET_USER":
-      console.log(action.user);
-      return { ...state, user: action.user };
+      toReturn = { ...state, user: action.user };
+      break;
   }
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem("user", JSON.stringify(toReturn));
+  }
+
+  return toReturn;
 };
 
-const getUserFromLocalStorage = (): AuthUser | null => {
-  if (typeof window === "undefined") return null;
+const initializer = (): State => {
+  if (typeof window === "undefined") return { user: null };
 
-  let user: string | object | null = localStorage.getItem("user");
+  let user = localStorage.getItem("user");
 
   if (user) {
-    return JSON.parse(user) as AuthUser;
+    return JSON.parse(user);
   }
 
-  return null;
+  return { user: null };
 };
 
 export default function AppContextWrapper({ children }: Props) {
-  const [state, dispatch] = useReducer(reducer, {
-    user: getUserFromLocalStorage(),
-  });
+  const [state, dispatch] = useReducer(reducer, {}, initializer);
   const ref = useRef(false);
 
   const relayDispatchContext = useContext(RelayDispatchContext);

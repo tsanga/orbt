@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<76423ab227432d807ccb214d44e1e433>>
+ * @generated SignedSource<<0efef97c0addb55aa3ede3886bb42444>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,7 +16,7 @@ export type watchViewRoomSubscription$variables = {
 export type watchViewRoomSubscription$data = {
   readonly room: {
     readonly id: string;
-    readonly " $fragmentSpreads": FragmentRefs<"chatBoxMessages" | "chatParticipants">;
+    readonly " $fragmentSpreads": FragmentRefs<"chatBoxMessages" | "chatParticipants" | "inviteModal" | "roomTopBarTitle">;
   };
 };
 export type watchViewRoomSubscription = {
@@ -35,7 +35,7 @@ var v0 = [
 v1 = [
   {
     "kind": "Variable",
-    "name": "id",
+    "name": "room",
     "variableName": "id"
   }
 ],
@@ -44,6 +44,13 @@ v2 = {
   "args": null,
   "kind": "ScalarField",
   "name": "id",
+  "storageKey": null
+},
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
   "storageKey": null
 };
 return {
@@ -71,6 +78,16 @@ return {
             "args": null,
             "kind": "FragmentSpread",
             "name": "chatBoxMessages"
+          },
+          {
+            "args": null,
+            "kind": "FragmentSpread",
+            "name": "roomTopBarTitle"
+          },
+          {
+            "args": null,
+            "kind": "FragmentSpread",
+            "name": "inviteModal"
           }
         ],
         "storageKey": null
@@ -128,13 +145,7 @@ return {
                 "name": "user",
                 "plural": false,
                 "selections": [
-                  {
-                    "alias": null,
-                    "args": null,
-                    "kind": "ScalarField",
-                    "name": "name",
-                    "storageKey": null
-                  },
+                  (v3/*: any*/),
                   (v2/*: any*/)
                 ],
                 "storageKey": null
@@ -174,23 +185,24 @@ return {
               }
             ],
             "storageKey": null
-          }
+          },
+          (v3/*: any*/)
         ],
         "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "93d9bfda02ecbfa61705d5144c174217",
+    "cacheID": "ae752b688622e62742957c8d00397011",
     "id": null,
     "metadata": {},
     "name": "watchViewRoomSubscription",
     "operationKind": "subscription",
-    "text": "subscription watchViewRoomSubscription(\n  $id: Id!\n) {\n  room(id: $id) {\n    id\n    ...chatParticipants\n    ...chatBoxMessages\n  }\n}\n\nfragment chatBoxMessages on Room {\n  messages {\n    id\n    msg\n    author\n    time\n  }\n}\n\nfragment chatParticipants on Room {\n  members {\n    color {\n      hex\n    }\n    user {\n      name\n      id\n    }\n  }\n}\n"
+    "text": "subscription watchViewRoomSubscription(\n  $id: Id!\n) {\n  room(room: $id) {\n    id\n    ...chatParticipants\n    ...chatBoxMessages\n    ...roomTopBarTitle\n    ...inviteModal\n  }\n}\n\nfragment chatBoxMessages on Room {\n  id\n  messages {\n    id\n    msg\n    author\n    time\n  }\n  members {\n    user {\n      id\n      name\n    }\n  }\n}\n\nfragment chatParticipants on Room {\n  id\n  members {\n    color {\n      hex\n    }\n    user {\n      name\n      id\n    }\n  }\n}\n\nfragment inviteModal on Room {\n  name\n}\n\nfragment roomTopBarTitle on Room {\n  name\n}\n"
   }
 };
 })();
 
-(node as any).hash = "6ef28afae77091bb1b44d5fdbabe2e1f";
+(node as any).hash = "40b48f5d3c2096d41dddeda1a51d770f";
 
 export default node;

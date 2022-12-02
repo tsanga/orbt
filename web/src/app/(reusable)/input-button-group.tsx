@@ -1,3 +1,5 @@
+"use client";
+
 export type Type = "dark";
 export type ButtonType = "gradient";
 export type Size = "small" | "medium" | "large";

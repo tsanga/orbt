@@ -1,3 +1,5 @@
+"use client";
+
 import * as styles from "./index.css";
 import Logo from "@assets/svg/logo-long.svg";
 import PlanetsBackground from "@assets/svg/planets-bg.svg";

@@ -14,6 +14,8 @@ import {
   useSubscription,
 } from "react-relay";
 import type { watchViewRoomQuery as RoomQuery } from "@gql/watchViewRoomQuery.graphql";
+import useRoomContext from "@hooks/use-room-context";
+import RoomInviteModal from "./invite-modal/invite-modal";
 
 type Props = {
   queryRef: PreloadedQuery<RoomQuery>;
@@ -24,10 +26,12 @@ const useRoomSubscription = (id: string) => {
     return {
       subscription: graphql`
         subscription watchViewRoomSubscription($id: Id!) {
-          room(id: $id) {
+          room(room: $id) {
             id
             ...chatParticipants
             ...chatBoxMessages
+            ...roomTopBarTitle
+            ...inviteModal
           }
         }
       `,
@@ -39,6 +43,8 @@ const useRoomSubscription = (id: string) => {
 };
 
 export default function RoomWatchView({ queryRef }: Props) {
+  const [state, dispatch] = useRoomContext();
+
   useRoomSubscription(queryRef.variables.id);
 
   const data = usePreloadedQuery<RoomQuery>(
@@ -50,6 +56,8 @@ export default function RoomWatchView({ queryRef }: Props) {
 
           ...chatParticipants
           ...chatBoxMessages
+          ...roomTopBarTitle
+          ...inviteModal
         }
       }
     `,
@@ -58,11 +66,18 @@ export default function RoomWatchView({ queryRef }: Props) {
 
   return (
     <main className={styles.main}>
+      {state?.generatedInviteCode && (
+        <RoomInviteModal
+          inviteCode={state.generatedInviteCode}
+          room={data.room!!}
+        />
+      )}
+
       <section className={styles.leftSection}>
-        <RoomTopBar />
+        <RoomTopBar room={data.room!!} />
       </section>
       <section className={styles.rightSection}>
-        <RoomChatBox subheading={"Hello"} />
+        <RoomChatBox subheading={"Hello"} room={data.room!!} />
         <Suspense fallback={<Skeleton />}>
           <RoomChatParticipants room={data.room!!} />
         </Suspense>

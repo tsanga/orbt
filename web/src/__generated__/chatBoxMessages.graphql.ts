@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<79e443d65d02e86eb2cf4b9fa643ab46>>
+ * @generated SignedSource<<ae0b93183c5f7eae1998a3b4f7eeb826>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,13 @@
 import { Fragment, ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type chatBoxMessages$data = {
+  readonly id: string;
+  readonly members: ReadonlyArray<{
+    readonly user: {
+      readonly id: string;
+      readonly name: string;
+    };
+  }>;
   readonly messages: ReadonlyArray<{
     readonly author: string;
     readonly id: string;
@@ -24,12 +31,21 @@ export type chatBoxMessages$key = {
   readonly " $fragmentSpreads": FragmentRefs<"chatBoxMessages">;
 };
 
-const node: ReaderFragment = {
+const node: ReaderFragment = (function(){
+var v0 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+};
+return {
   "argumentDefinitions": [],
   "kind": "Fragment",
   "metadata": null,
   "name": "chatBoxMessages",
   "selections": [
+    (v0/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -38,13 +54,7 @@ const node: ReaderFragment = {
       "name": "messages",
       "plural": true,
       "selections": [
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "id",
-          "storageKey": null
-        },
+        (v0/*: any*/),
         {
           "alias": null,
           "args": null,
@@ -68,12 +78,43 @@ const node: ReaderFragment = {
         }
       ],
       "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "RoomMember",
+      "kind": "LinkedField",
+      "name": "members",
+      "plural": true,
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "User",
+          "kind": "LinkedField",
+          "name": "user",
+          "plural": false,
+          "selections": [
+            (v0/*: any*/),
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "name",
+              "storageKey": null
+            }
+          ],
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
     }
   ],
   "type": "Room",
   "abstractKey": null
 };
+})();
 
-(node as any).hash = "fe8f45632942de38572668b85a237e20";
+(node as any).hash = "69ef278a2b60fbbfaf88efb58bf9640c";
 
 export default node;

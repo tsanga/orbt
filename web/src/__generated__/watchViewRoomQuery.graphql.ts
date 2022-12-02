@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8eff80d711d7a6c81555f07ad743d469>>
+ * @generated SignedSource<<d09291710b58e2893fff3ffa186e3c77>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,7 +17,7 @@ export type watchViewRoomQuery$data = {
   readonly room: {
     readonly id: string;
     readonly name: string;
-    readonly " $fragmentSpreads": FragmentRefs<"chatBoxMessages" | "chatParticipants">;
+    readonly " $fragmentSpreads": FragmentRefs<"chatBoxMessages" | "chatParticipants" | "inviteModal" | "roomTopBarTitle">;
   } | null;
 };
 export type watchViewRoomQuery = {
@@ -80,6 +80,16 @@ return {
             "args": null,
             "kind": "FragmentSpread",
             "name": "chatBoxMessages"
+          },
+          {
+            "args": null,
+            "kind": "FragmentSpread",
+            "name": "roomTopBarTitle"
+          },
+          {
+            "args": null,
+            "kind": "FragmentSpread",
+            "name": "inviteModal"
           }
         ],
         "storageKey": null
@@ -185,16 +195,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "72ab92ac864ea5c39bc171fbe2f72433",
+    "cacheID": "d2975a8af87a7381b3ad8149277e41b7",
     "id": null,
     "metadata": {},
     "name": "watchViewRoomQuery",
     "operationKind": "query",
-    "text": "query watchViewRoomQuery(\n  $id: Id!\n) {\n  room(room: $id) {\n    id\n    name\n    ...chatParticipants\n    ...chatBoxMessages\n  }\n}\n\nfragment chatBoxMessages on Room {\n  messages {\n    id\n    msg\n    author\n    time\n  }\n}\n\nfragment chatParticipants on Room {\n  members {\n    color {\n      hex\n    }\n    user {\n      name\n      id\n    }\n  }\n}\n"
+    "text": "query watchViewRoomQuery(\n  $id: Id!\n) {\n  room(room: $id) {\n    id\n    name\n    ...chatParticipants\n    ...chatBoxMessages\n    ...roomTopBarTitle\n    ...inviteModal\n  }\n}\n\nfragment chatBoxMessages on Room {\n  id\n  messages {\n    id\n    msg\n    author\n    time\n  }\n  members {\n    user {\n      id\n      name\n    }\n  }\n}\n\nfragment chatParticipants on Room {\n  id\n  members {\n    color {\n      hex\n    }\n    user {\n      name\n      id\n    }\n  }\n}\n\nfragment inviteModal on Room {\n  name\n}\n\nfragment roomTopBarTitle on Room {\n  name\n}\n"
   }
 };
 })();
 
-(node as any).hash = "3a3357bc015d46265b489b8f4ce206d2";
+(node as any).hash = "758033cf3038fbc970303bce9b2ec9ba";
 
 export default node;

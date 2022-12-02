@@ -8,4 +8,5 @@ export const nav = style({
   background: vars.color.background.accentPrimary,
   display: "flex",
   alignItems: "center",
+  justifyContent: "space-between",
 });

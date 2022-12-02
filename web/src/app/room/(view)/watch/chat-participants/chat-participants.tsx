@@ -14,6 +14,7 @@ export default function RoomChatParticipants({ room }: Props) {
   const data = useFragment(
     graphql`
       fragment chatParticipants on Room {
+        id
         members {
           color {
             hex
@@ -31,9 +32,9 @@ export default function RoomChatParticipants({ room }: Props) {
   return (
     <aside className={styles.container}>
       {data.members.map((user) => (
-        <RoomChatParticipant {...user}></RoomChatParticipant>
+        <RoomChatParticipant key={user.user.id} {...user}></RoomChatParticipant>
       ))}
-      <RoomChatParticipantInviteButton />
+      <RoomChatParticipantInviteButton room={data.id} />
     </aside>
   );
 }

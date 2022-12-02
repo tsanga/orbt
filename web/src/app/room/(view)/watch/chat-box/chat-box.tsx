@@ -18,16 +18,30 @@ const ChatBox = ({ subheading, room }: Props) => {
   const data = useFragment(
     graphql`
       fragment chatBoxMessages on Room {
+        id
         messages {
           id
           msg
           author
           time
         }
+        members {
+          user {
+            id
+            name
+          }
+        }
       }
     `,
     room
   );
+
+  const usersMapped = data.members
+    .map((member) => member.user)
+    .reduce((acc, user) => {
+      acc[user.id] = user;
+      return acc;
+    }, {} as Record<string, { id: string; name: string }>);
 
   return (
     <div className={styles.chatContainer} data-testid="chat-box">
@@ -42,9 +56,15 @@ const ChatBox = ({ subheading, room }: Props) => {
           <h5 className={styles.chatHeaderSubheading}>{subheading}</h5>
         )}
       </header>
-      <main className={styles.main}></main>
+      <main className={styles.main}>
+        {data.messages.map((message) => (
+          <div key={message.id}>
+            {usersMapped[message.author]?.name}: {message.msg}
+          </div>
+        ))}
+      </main>
       <footer className={styles.footer}>
-        <ChatBoxInput />
+        <ChatBoxInput room={data.id} />
       </footer>
     </div>
   );

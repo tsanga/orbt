@@ -47,6 +47,9 @@ export const chatHeaderSubheading = style([
 
 export const main = style({
   flex: 1,
+  position: "relative",
+  zIndex: 9,
+  padding: vars.spacing.lg,
 });
 
 export const footer = style({

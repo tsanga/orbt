@@ -16,6 +16,7 @@ export const vars = createThemeContract({
       placeholder: "",
       input: "",
       dim: "",
+      accent: "",
     },
     border: {
       primary: "",
