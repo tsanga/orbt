@@ -72,14 +72,14 @@ impl Room {
                 let messages_len = self.messages.len();
 
                 let mut start = after.map(|after| after + 1).unwrap_or(0);
-                let mut end = before.unwrap_or(messages_len.min(10));
+                let mut end = before.unwrap_or(messages_len);
                 if let Some(first) = first {
                     end = (start + first).min(end);
                 }
                 if let Some(last) = last {
                     start = if last > end - start { end } else { end - last };
                 }
-                let mut connection = Connection::new(start > 0, end < messages_len.min(10));
+                let mut connection = Connection::new(start > 0, end < messages_len);
                 for (i, m) in self
                     .messages
                     .iter()
