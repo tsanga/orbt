@@ -3,17 +3,10 @@ use futures::Stream;
 
 use crate::{
     auth::{action::Action, actor::Actor, authority::Authority},
-    model::{
-        room::{Room, RoomMember},
-        user::User,
-    },
+    model::{room::Room, user::User},
     store::DataStore,
     stream::{StreamControl, Subscriber},
-    types::{
-        color::{Color, ColorType},
-        id::Id,
-        token::Token,
-    },
+    types::{color::ColorType, id::Id, token::Token},
 };
 
 #[derive(Default)]
@@ -34,46 +27,6 @@ impl RoomQuery {
             ctx.require_act(RoomAction::Get, &*room)?;
         }
         Ok(room.as_deref().cloned())
-    }
-
-    async fn room_member<'ctx>(
-        &self,
-        ctx: &Context<'ctx>,
-        room: Id<Room>,
-        user: Id<User>,
-    ) -> Result<Option<RoomMember>> {
-        let room_store = ctx.data::<DataStore<Room>>()?;
-        let room = room_store
-            .get(&room)?
-            .ok_or::<async_graphql::Error>("Room not found".into())?;
-        let member = room.get_member(&user).cloned();
-        if let Some(member) = &member {
-            ctx.require_act(RoomAction::GetMember(&member.user), &room)?;
-        }
-        Ok(member)
-    }
-
-    async fn room_colors<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>) -> Result<Vec<Color>> {
-        let room_store = ctx.data::<DataStore<Room>>()?;
-        let room = room_store
-            .get(&room)?
-            .ok_or::<async_graphql::Error>("Room not found".into())?;
-        let colors = room.get_available_colors();
-        Ok(colors.iter().map(|c| Color::from(*c)).collect())
-    }
-
-    async fn room_color_is_available<'ctx>(
-        &self,
-        ctx: &Context<'ctx>,
-        room: Id<Room>,
-        color: ColorType,
-    ) -> Result<bool> {
-        let room_store = ctx.data::<DataStore<Room>>()?;
-        let room = room_store
-            .get(&room)?
-            .ok_or::<async_graphql::Error>("Room not found".into())?;
-        let avail = room.is_color_available(color);
-        Ok(avail)
     }
 }
 
@@ -103,19 +56,14 @@ impl RoomMutation {
         Ok(room)
     }
 
-    async fn send_chat_message<'ctx>(
-        &self,
-        ctx: &Context<'ctx>,
-        msg: String,
-    ) -> Result<Room> {
+    async fn send_chat_message<'ctx>(&self, ctx: &Context<'ctx>, msg: String) -> Result<Room> {
         let user = ctx.user()?;
         let mut room = ctx.room()?;
 
         ctx.require_act(RoomAction::SendChat, &room)?;
 
         let room_chat_msg = room.create_chat_msg(&user, msg)?;
-
-        room.add_chat_msg(room_chat_msg.clone());
+        room.add_chat_msg(room_chat_msg);
 
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
         stream_ctl.publish(room.clone());
@@ -123,11 +71,7 @@ impl RoomMutation {
         Ok(room.clone())
     }
 
-    async fn pass_room_remote<'ctx>(
-        &self,
-        ctx: &Context<'ctx>,
-        to_user: Id<User>,
-    ) -> Result<Room> {
+    async fn pass_room_remote<'ctx>(&self, ctx: &Context<'ctx>, to_user: Id<User>) -> Result<Room> {
         let user = ctx.user()?;
         let mut room = ctx.room()?;
 
@@ -167,21 +111,11 @@ impl RoomMutation {
         }
 
         let room_id = if let Some(invite_token) = invite_token {
-            room_store
-                .data
-                .lock()
-                .unwrap()
-                .values()
-                .find(|r| r.check_invite(&invite_token))
+            Room::find_room(room_store, |r| r.check_invite(&invite_token))
                 .map(|r| r.id.clone())
                 .ok_or::<async_graphql::Error>("Room not found".into())?
         } else {
-            room_store
-                .data
-                .lock()
-                .unwrap()
-                .values()
-                .find(|r| r.is_owner(&user.id))
+            Room::find_room(room_store, |r| r.is_owner(&user.id))
                 .map(|r| r.id.clone())
                 .ok_or::<async_graphql::Error>("You are not the owner of any room".into())?
         };
@@ -221,7 +155,7 @@ impl RoomMutation {
         let user = ctx.user()?;
         let mut room = ctx.room()?;
         ctx.require_act(RoomAction::CreateInvite, &room)?;
- 
+
         let room_invite = room.create_invite(user.id.clone())?;
 
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
@@ -230,11 +164,7 @@ impl RoomMutation {
         Ok(room_invite.token.clone())
     }
 
-    async fn revoke_room_invite<'ctx>(
-        &self,
-        ctx: &Context<'ctx>,
-        invite: String,
-    ) -> Result<Room> {
+    async fn revoke_room_invite<'ctx>(&self, ctx: &Context<'ctx>, invite: String) -> Result<Room> {
         let mut room = ctx.room()?;
         ctx.require_act(RoomAction::RevokeInvite(&invite), &room)?;
 
@@ -246,11 +176,7 @@ impl RoomMutation {
         Ok(room.clone())
     }
 
-    async fn kick_member<'ctx>(
-        &self,
-        ctx: &Context<'ctx>,
-        member: Id<User>,
-    ) -> Result<Room> {
+    async fn kick_member<'ctx>(&self, ctx: &Context<'ctx>, member: Id<User>) -> Result<Room> {
         let mut room = ctx.room()?;
 
         ctx.require_act(RoomAction::KickMember(&member), &room)?;
@@ -288,7 +214,7 @@ impl RoomMutation {
 impl RoomSubscription {
     async fn room<'ctx>(
         &'ctx self,
-        ctx: &Context<'ctx>
+        ctx: &Context<'ctx>,
     ) -> Result<impl Stream<Item = Room> + 'ctx> {
         let room_store = ctx.data::<DataStore<Room>>()?;
         let mut room = ctx.room()?;
@@ -403,16 +329,19 @@ impl<'a> Action<Room> for RoomAction<'a> {
                 }
                 Self::CreateInvite => {
                     room.is_member(user_id)
-                        && !room
+                        /*&& !room
                             .invites
                             .iter()
-                            .any(|i| &i.inviter == user_id && i.token.is_valid())
+                            .any(|i| &i.inviter == user_id && i.token.is_valid())*/
                 }
                 Self::RevokeInvite(token) => {
                     let invite_exists = room.invites.iter().any(|i| i.token.check(&token));
                     let is_member_or_owner = room.is_member(user_id) || room.is_owner(user_id);
                     let is_owner_or_created_invite = room.is_owner(user_id)
-                        || room.invites.iter().any(|i| &i.inviter == user_id);
+                        || room
+                            .invites
+                            .iter()
+                            .any(|i| &i.inviter == user_id && i.token.check(&token));
 
                     invite_exists && is_member_or_owner && is_owner_or_created_invite
                 }
