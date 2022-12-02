@@ -282,15 +282,15 @@ impl RoomSubscription {
     async fn room<'ctx>(
         &'ctx self,
         ctx: &Context<'ctx>,
-        id: Id<Room>,
+        room: Id<Room>,
     ) -> Result<impl Stream<Item = Room> + 'ctx> {
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let Some(mut room) = room_store.get(&id)? else { return Err("Room not found".into()) };
+        let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
 
         let actor = ctx.require_act(RoomAction::SubscribeChat, &room)?;
         let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
 
-        let id = room.id.clone(); // room id
+        let room_id = room.id.clone(); // room id
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
 
         let Some(room_member) = room.get_member_mut(&user.id) else { return Err("You are not a member of that room".into()) };
@@ -300,7 +300,7 @@ impl RoomSubscription {
 
         room_member.connected = true;
 
-        Ok(stream_ctl.subscribe(UserRoomSubscriber::new(user.id.clone(), id, room_store.clone(), stream_ctl.clone())))
+        Ok(stream_ctl.subscribe(UserRoomSubscriber::new(user.id.clone(), room_id, room_store.clone(), stream_ctl.clone())))
     }
 }
 
