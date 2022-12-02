@@ -9,7 +9,10 @@ import {
   GraphQLResponse,
   CacheConfig,
   EnvironmentConfig,
+  Observable,
 } from "relay-runtime";
+
+import { Client, createClient } from "graphql-ws";
 
 const IS_SERVER = typeof window === typeof undefined;
 const CACHE_TTL = 5 * 1000; // 5 seconds, to resolve preloaded results
@@ -42,25 +45,39 @@ export const responseCache: QueryResponseCache | null = IS_SERVER
     });
 
 function createNetwork(extendHeaders: any) {
-  async function fetchResponse(
-    params: RequestParameters,
-    variables: Variables,
-    cacheConfig: CacheConfig
-  ) {
-    const isQuery = params.operationKind === "query";
-    const cacheKey = params.id ?? params.cacheID;
-    const forceFetch = cacheConfig && cacheConfig.force;
-    if (responseCache != null && isQuery && !forceFetch) {
-      const fromCache = responseCache.get(cacheKey, variables);
-      if (fromCache != null) {
-        return Promise.resolve(fromCache);
-      }
-    }
+  const client = IS_SERVER
+    ? null
+    : createClient({
+        url: "ws://localhost:8080",
+        connectionParams: async () => {
+          return extendHeaders;
+        },
+      });
 
-    return fetchQuery(params, variables, extendHeaders);
+  function fetch(operation: RequestParameters, variables: Variables) {
+    return fetchQuery(operation, variables, extendHeaders);
   }
-  const network = Network.create(fetchResponse);
-  return network;
+
+  function subscribe(
+    operation: RequestParameters,
+    variables: Variables
+  ): Observable<any> {
+    return Observable.create((sink) => {
+      if (!operation.text) {
+        return sink.error(new Error("Operation text cannot be empty"));
+      }
+      return client?.subscribe(
+        {
+          operationName: operation.name,
+          query: operation.text,
+          variables,
+        },
+        sink
+      );
+    });
+  }
+
+  return Network.create(fetch, subscribe);
 }
 
 // Export a singleton instance of Relay Environment configured with our network function:

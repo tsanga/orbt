@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fab8cd83b0076e02cdb5ebe15b2bc73f>>
+ * @generated SignedSource<<ed6bb20f84da6df300e41080b7396072>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,6 +16,7 @@ export type chatParticipants$data = {
       readonly hex: string;
     };
     readonly user: {
+      readonly id: string;
       readonly name: string;
     };
   }>;
@@ -72,6 +73,13 @@ const node: ReaderFragment = {
               "kind": "ScalarField",
               "name": "name",
               "storageKey": null
+            },
+            {
+              "alias": null,
+              "args": null,
+              "kind": "ScalarField",
+              "name": "id",
+              "storageKey": null
             }
           ],
           "storageKey": null
@@ -84,6 +92,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "30b6b73aa532d8cc6ed39a4135a84a9a";
+(node as any).hash = "0976b20272d1feffa3a56639464d9404";
 
 export default node;

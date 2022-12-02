@@ -8,6 +8,13 @@ export type User = {
   };
 };
 
+export type RoomParticipant = {
+  user: Partial<User>;
+  color: {
+    hex: string;
+  };
+};
+
 export type UserDisplayPartial = Pick<
   User,
   "id" | "name" | "profilePicture" | "status"

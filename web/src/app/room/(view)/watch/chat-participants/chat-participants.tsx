@@ -20,6 +20,7 @@ export default function RoomChatParticipants({ room }: Props) {
           }
           user {
             name
+            id
           }
         }
       }
@@ -29,8 +30,8 @@ export default function RoomChatParticipants({ room }: Props) {
 
   return (
     <aside className={styles.container}>
-      {data.members.map((i) => (
-        <span>{i.user.name}</span>
+      {data.members.map((user) => (
+        <RoomChatParticipant {...user}></RoomChatParticipant>
       ))}
       <RoomChatParticipantInviteButton />
     </aside>

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bc0b185082ff81b35ea47ad51868ddb2>>
+ * @generated SignedSource<<d4c22779dfd41f3c2bbef85e07ce005b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -47,18 +47,6 @@ v1 = {
 v2 = [
   {
     "alias": null,
-    "args": null,
-    "concreteType": "Room",
-    "kind": "LinkedField",
-    "name": "joinRoom",
-    "plural": false,
-    "selections": [
-      (v1/*: any*/)
-    ],
-    "storageKey": null
-  },
-  {
-    "alias": null,
     "args": [
       {
         "kind": "Variable",
@@ -99,6 +87,18 @@ v2 = [
       }
     ],
     "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "Room",
+    "kind": "LinkedField",
+    "name": "joinRoom",
+    "plural": false,
+    "selections": [
+      (v1/*: any*/)
+    ],
+    "storageKey": null
   }
 ];
 return {
@@ -119,16 +119,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "610e5cd9c7999e8d2c68d5e953ee3348",
+    "cacheID": "a8277a7c69036b897ead56ae61f0faee",
     "id": null,
     "metadata": {},
     "name": "joinViewRoomMutation",
     "operationKind": "mutation",
-    "text": "mutation joinViewRoomMutation(\n  $name: String!\n) {\n  joinRoom {\n    id\n  }\n  setUserName(name: $name) {\n    id\n    name\n    token {\n      token\n    }\n  }\n}\n"
+    "text": "mutation joinViewRoomMutation(\n  $name: String!\n) {\n  setUserName(name: $name) {\n    id\n    name\n    token {\n      token\n    }\n  }\n  joinRoom {\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "eb963fd2dcec7a544699f36a4bfb81af";
+(node as any).hash = "f33f355bc356d6f36c65c7d049125b56";
 
 export default node;

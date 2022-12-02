@@ -6,16 +6,41 @@ import RoomChatBox from "./chat-box/chat-box";
 import RoomChatParticipants, {
   Skeleton,
 } from "./chat-participants/chat-participants";
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { graphql } from "relay-runtime";
-import { PreloadedQuery, usePreloadedQuery } from "react-relay";
+import {
+  PreloadedQuery,
+  usePreloadedQuery,
+  useSubscription,
+} from "react-relay";
 import type { watchViewRoomQuery as RoomQuery } from "@gql/watchViewRoomQuery.graphql";
 
 type Props = {
   queryRef: PreloadedQuery<RoomQuery>;
 };
 
+const useRoomSubscription = (id: string) => {
+  const config = useMemo(() => {
+    return {
+      subscription: graphql`
+        subscription watchViewRoomSubscription($id: Id!) {
+          room(id: $id) {
+            id
+            ...chatParticipants
+            ...chatBoxMessages
+          }
+        }
+      `,
+      variables: { id },
+    };
+  }, [id]);
+
+  return useSubscription(config);
+};
+
 export default function RoomWatchView({ queryRef }: Props) {
+  useRoomSubscription(queryRef.variables.id);
+
   const data = usePreloadedQuery<RoomQuery>(
     graphql`
       query watchViewRoomQuery($id: Id!) {
@@ -24,6 +49,7 @@ export default function RoomWatchView({ queryRef }: Props) {
           name
 
           ...chatParticipants
+          ...chatBoxMessages
         }
       }
     `,

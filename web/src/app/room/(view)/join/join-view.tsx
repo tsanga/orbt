@@ -18,16 +18,16 @@ export default function RoomJoinView() {
 
   const [commitMutation, _] = useMutation<joinViewRoomMutation>(graphql`
     mutation joinViewRoomMutation($name: String!) {
-      joinRoom {
-        id
-      }
-
       setUserName(name: $name) {
         id
         name
         token {
           token
         }
+      }
+
+      joinRoom {
+        id
       }
     }
   `);

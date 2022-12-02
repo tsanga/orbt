@@ -29,6 +29,7 @@
     "@vanilla-extract/css": "^1.9.1",
     "eslint": "8.27.0",
     "graphql": "^16.6.0",
+    "graphql-ws": "^5.11.2",
     "mini-css-extract-plugin": "^2.6.1",
     "next": "13.0.7-canary.0",
     "react": "^18.2.0",

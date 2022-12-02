@@ -85,7 +85,7 @@ export default function AppContextWrapper({ children }: Props) {
     if (!user) {
       if (!ref.current) {
         commitMutation({
-          variables: { name: "alex adewole" },
+          variables: {},
           onCompleted: (response) => {
             if (response.createUser) {
               dispatch({
@@ -116,7 +116,7 @@ export default function AppContextWrapper({ children }: Props) {
           {
             configName: "root-auth-environment",
           },
-          { authorization: user.token.token }
+          { Authorization: user.token.token }
         ),
       });
     }
