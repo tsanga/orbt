@@ -80,7 +80,13 @@ impl Room {
                     start = if last > end - start { end } else { end - last };
                 }
                 let mut connection = Connection::new(start > 0, end < messages_len.min(10));
-                for (i, m) in self.messages.iter().enumerate().skip(start).take(end - start) {
+                for (i, m) in self
+                    .messages
+                    .iter()
+                    .enumerate()
+                    .skip(start)
+                    .take(end - start)
+                {
                     connection.edges.push(Edge::new(i, m.clone()));
                 }
                 Ok::<_, async_graphql::Error>(connection)
