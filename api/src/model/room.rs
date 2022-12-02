@@ -1,4 +1,4 @@
-use async_graphql::{ComplexObject, Context, Error, SimpleObject};
+use async_graphql::{connection::*, ComplexObject, Context, Error, SimpleObject};
 
 use crate::{
     auth::authority::Authority,
@@ -24,6 +24,7 @@ pub struct Room {
     pub owner: Option<Id<User>>,
     pub members: Vec<RoomMember>,
     pub remote: Option<Id<User>>,
+    #[graphql(skip)]
     pub messages: Vec<RoomChatMsg>,
     pub invites: Vec<RoomInvite>,
 }
@@ -53,6 +54,39 @@ impl Room {
 
     async fn member_count(&self) -> usize {
         self.members.len()
+    }
+
+    async fn messages(
+        &self,
+        after: Option<String>,
+        before: Option<String>,
+        first: Option<i32>,
+        last: Option<i32>,
+    ) -> async_graphql::Result<Connection<usize, RoomChatMsg, EmptyFields, EmptyFields>> {
+        query(
+            after,
+            before,
+            first,
+            last,
+            |after, before, first, last| async move {
+                let messages_len = self.messages.len();
+
+                let mut start = after.map(|after| after + 1).unwrap_or(0);
+                let mut end = before.unwrap_or(messages_len.min(10));
+                if let Some(first) = first {
+                    end = (start + first).min(end);
+                }
+                if let Some(last) = last {
+                    start = if last > end - start { end } else { end - last };
+                }
+                let mut connection = Connection::new(start > 0, end < messages_len.min(10));
+                for (i, m) in self.messages.iter().enumerate().skip(start).take(end - start) {
+                    connection.edges.push(Edge::new(i, m.clone()));
+                }
+                Ok::<_, async_graphql::Error>(connection)
+            },
+        )
+        .await
     }
 }
 
@@ -238,8 +272,8 @@ impl Room {
             .iter()
             .map(|m| m.id.0 .0)
             .max()
-            .unwrap_or(0u32)
-            + 1u32;
+            .map(|i| i + 1)
+            .unwrap_or(0u32);
         let msg = RoomChatMsg::new(
             Id(NumId::from_u32(id)),
             author.id.clone(),
