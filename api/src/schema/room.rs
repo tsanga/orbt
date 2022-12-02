@@ -314,7 +314,7 @@ impl RoomSubscription {
 
         Ok(stream_ctl.subscribe(UserRoomSubscriber::new(
             user.id.clone(),
-            id,
+            room_id,
             room_store.clone(),
             stream_ctl.clone(),
         )))
