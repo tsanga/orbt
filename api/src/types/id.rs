@@ -1,5 +1,5 @@
 use crate::model::Model;
-use std::{hash::Hash, fmt::Display};
+use std::{fmt::Display, hash::Hash};
 
 use async_graphql::{InputValueError, Scalar, ScalarType, Value};
 use serde::{Deserialize, Serialize};

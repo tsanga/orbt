@@ -1,7 +1,15 @@
+use async_graphql::{connection::*, ComplexObject, Context, Error, SimpleObject};
 
-use async_graphql::{SimpleObject, Error, ComplexObject, Context};
-
-use crate::{types::{time::Time, token::Token, color::{Color, ColorType}, id::{Id, UuidId, NumId}}, auth::authority::Authority, store::DataStore};
+use crate::{
+    auth::authority::Authority,
+    store::{DataStore, DataStoreEntry},
+    types::{
+        color::{Color, ColorType},
+        id::{Id, NumId, UuidId},
+        time::Time,
+        token::Token,
+    },
+};
 
 use super::{user::User, Model};
 
@@ -16,6 +24,7 @@ pub struct Room {
     pub owner: Option<Id<User>>,
     pub members: Vec<RoomMember>,
     pub remote: Option<Id<User>>,
+    #[graphql(skip)]
     pub messages: Vec<RoomChatMsg>,
     pub invites: Vec<RoomInvite>,
 }
@@ -31,11 +40,11 @@ impl Model for Room {
 #[ComplexObject]
 impl Room {
     async fn get_my_member<'ctx>(&self, ctx: &Context<'ctx>) -> async_graphql::Result<RoomMember> {
-        let user = ctx.actor_user()?;
+        let user = ctx.user()?;
         if let Some(member) = self.members.iter().find(|m| &m.user == &user.id) {
-            return async_graphql::Result::Ok(member.clone())
+            return async_graphql::Result::Ok(member.clone());
         } else {
-            return async_graphql::Result::Err("You are not a member of this room".into())
+            return async_graphql::Result::Err("You are not a member of this room".into());
         }
     }
 
@@ -45,6 +54,45 @@ impl Room {
 
     async fn member_count(&self) -> usize {
         self.members.len()
+    }
+
+    async fn messages(
+        &self,
+        after: Option<String>,
+        before: Option<String>,
+        first: Option<i32>,
+        last: Option<i32>,
+    ) -> async_graphql::Result<Connection<usize, RoomChatMsg, EmptyFields, EmptyFields>> {
+        query(
+            after,
+            before,
+            first,
+            last,
+            |after, before, first, last| async move {
+                let messages_len = self.messages.len();
+
+                let mut start = after.map(|after| after + 1).unwrap_or(0);
+                let mut end = before.unwrap_or(messages_len);
+                if let Some(first) = first {
+                    end = (start + first).min(end);
+                }
+                if let Some(last) = last {
+                    start = if last > end - start { end } else { end - last };
+                }
+                let mut connection = Connection::new(start > 0, end < messages_len);
+                for (i, m) in self
+                    .messages
+                    .iter()
+                    .enumerate()
+                    .skip(start)
+                    .take(end - start)
+                {
+                    connection.edges.push(Edge::new(i, m.clone()));
+                }
+                Ok::<_, async_graphql::Error>(connection)
+            },
+        )
+        .await
     }
 }
 
@@ -118,16 +166,16 @@ impl Room {
 
     pub fn can_pass_remote(&self, from: &Id<User>, to: &Id<User>) -> bool {
         if !self.is_member(to) {
-            return false
+            return false;
         }
         if let Some(owner) = &self.owner {
             if owner == from {
-                return true
+                return true;
             }
         }
         if let Some(remote) = &self.remote {
             if remote == from {
-                return true
+                return true;
             }
         }
         false
@@ -135,21 +183,27 @@ impl Room {
 
     pub fn pass_remote(&mut self, from: &Id<User>, to: Id<User>) -> Result<(), Error> {
         if !self.is_member(&from) || !self.is_member(&to) {
-            return Err("User not in room".into())
+            return Err("User not in room".into());
         }
         if !self.can_pass_remote(&from, &to) {
-            return Err("You don't have the remote".into())
+            return Err("You don't have the remote".into());
         }
         self.remote = Some(to);
         Ok(())
     }
 
     pub fn pick_available_color(&self) -> ColorType {
-        *self.get_available_colors().first().expect("What the fuck, there are no colors")
+        *self
+            .get_available_colors()
+            .first()
+            .expect("What the fuck, there are no colors")
     }
 
     pub fn get_available_colors(&self) -> Vec<ColorType> {
-        ColorType::all().into_iter().filter(|c| self.is_color_available(*c)).collect()
+        ColorType::all()
+            .into_iter()
+            .filter(|c| self.is_color_available(*c))
+            .collect()
     }
 
     pub fn is_color_available(&self, color: ColorType) -> bool {
@@ -166,16 +220,20 @@ impl Room {
 
     pub fn create_invite(&mut self, user_id: Id<User>) -> Result<RoomInvite, Error> {
         if !self.is_member(&user_id) {
-            return Err("User not in room".into())
+            return Err("User not in room".into());
         }
 
-        if let Some(invite) = self.invites.iter().find(|i| i.token.is_valid() && &i.inviter == &user_id) {
-            return Ok(invite.clone())
+        if let Some(invite) = self
+            .invites
+            .iter()
+            .find(|i| i.token.is_valid() && &i.inviter == &user_id)
+        {
+            return Ok(invite.clone());
         }
 
         let invite = RoomInvite::new(user_id);
         self.invites.push(invite.clone());
-        
+
         Ok(invite)
     }
 
@@ -183,7 +241,7 @@ impl Room {
         let token = token.to_string();
         if let Some(index) = self.invites.iter().position(|i| i.token.check(&token)) {
             self.invites.remove(index);
-            return Ok(())
+            return Ok(());
         }
         Err("Invite not found".into())
     }
@@ -195,10 +253,10 @@ impl Room {
 
     pub fn is_invited_or_owner(&self, user: &User, token: Option<String>) -> bool {
         if let Some(token) = token {
-            return self.check_invite(token)
+            return self.check_invite(token);
         }
         if self.is_owner(&user.id) {
-            return true
+            return true;
         }
         false
     }
@@ -207,12 +265,27 @@ impl Room {
         self.messages.push(chat);
     }
 
-    pub fn create_chat_msg(&mut self, author: &User, msg: impl ToString) -> Result<RoomChatMsg, Error> {
+    pub fn create_chat_msg(
+        &mut self,
+        author: &User,
+        msg: impl ToString,
+    ) -> Result<RoomChatMsg, Error> {
         if !self.is_member(&author.id) {
-            return Err("User not in room".into())
+            return Err("User not in room".into());
         }
-        let id = self.messages.iter().map(|m| m.id.0.0).max().unwrap_or(0u32) + 1u32;
-        let msg = RoomChatMsg::new(Id(NumId::from_u32(id)), author.id.clone(), msg.to_string(), Time::now());
+        let id = self
+            .messages
+            .iter()
+            .map(|m| m.id.0 .0)
+            .max()
+            .map(|i| i + 1)
+            .unwrap_or(0u32);
+        let msg = RoomChatMsg::new(
+            Id(NumId::from_u32(id)),
+            author.id.clone(),
+            msg.to_string(),
+            Time::now(),
+        );
         Ok(msg)
     }
 }
@@ -223,8 +296,26 @@ impl Room {
         room_store.data.lock().unwrap().values().any(|r| func(r))
     }
 
-    pub fn find_room<F: Fn(&Room) -> bool>(room_store: &DataStore<Room>, func: F) -> Option<Room> {
-        room_store.data.lock().unwrap().values().find(|r| func(r)).cloned()
+    pub fn find_room<F: Fn(&Room) -> bool>(
+        room_store: &DataStore<Room>,
+        func: F,
+    ) -> Option<DataStoreEntry<Room>> {
+        let id = room_store
+            .data
+            .lock()
+            .unwrap()
+            .values()
+            .find(|r| func(r))
+            .map(|r| r.id.clone());
+        if let Some(id) = id {
+            room_store.get(&id).ok().flatten()
+        } else {
+            None
+        }
+    }
+
+    pub fn get_by_member<'a>(room_store: &'a DataStore<Room>, user: &'a Id<User>) -> Option<DataStoreEntry<'a, Room>> {
+        Self::find_room(room_store, |r| r.is_member(user))
     }
 }
 
@@ -235,6 +326,7 @@ pub struct RoomMember {
     pub user: Id<User>,
     pub color: Color,
     pub connected: bool,
+    pub typing: bool,
 }
 
 impl RoomMember {
@@ -243,6 +335,7 @@ impl RoomMember {
             user,
             color: color.unwrap_or(room.pick_available_color()).into(),
             connected: false,
+            typing: false,
         }
     }
 }
@@ -253,6 +346,10 @@ impl RoomMember {
         let user_store = ctx.data::<DataStore<User>>()?;
         let user = user_store.get(&self.user)?.ok_or("User not found")?;
         Ok(user.clone())
+    }
+
+    async fn id<'ctx>(&'ctx self) -> &'ctx Id<User> {
+        &self.user
     }
 }
 
@@ -270,7 +367,7 @@ impl RoomChatMsg {
             id,
             author,
             msg,
-            time
+            time,
         }
     }
 }

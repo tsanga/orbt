@@ -1,7 +1,7 @@
 use crate::types::id::IdType;
 
-pub mod user;
 pub mod room;
+pub mod user;
 
 pub trait Model: Send + Sync + Clone {
     type Id: IdType;

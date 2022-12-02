@@ -34,8 +34,11 @@ where
     let user_store = DataStore::<User>::new();
     let room_store = DataStore::<Room>::new();
     let stream_user_room_ctl = StreamControl::<User, Room>::new();
-    let orbt_data =
-        server::OrbtData::new(user_store.clone(), room_store.clone(), stream_user_room_ctl.clone());
+    let orbt_data = server::OrbtData::new(
+        user_store.clone(),
+        room_store.clone(),
+        stream_user_room_ctl.clone(),
+    );
     let address = std::env::var("ADDRESS").unwrap_or("0.0.0.0".to_string());
     let port = std::env::var("PORT").unwrap_or("8080".to_string());
 

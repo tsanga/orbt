@@ -17,7 +17,7 @@ impl From<ColorType> for Color {
     fn from(t: ColorType) -> Self {
         Self {
             name: t,
-            hex: t.to_hex().to_string()
+            hex: t.to_hex().to_string(),
         }
     }
 }
@@ -69,15 +69,15 @@ impl ColorType {
 
     pub fn all() -> Vec<Self> {
         vec![
-            Self::Red, 
-            Self::Orange, 
-            Self::Yellow, 
-            Self::Lime, 
-            Self::Green, 
-            Self::Cyan, 
-            Self::Blue, 
-            Self::Indigo, 
-            Self::Purple, 
+            Self::Red,
+            Self::Orange,
+            Self::Yellow,
+            Self::Lime,
+            Self::Green,
+            Self::Cyan,
+            Self::Blue,
+            Self::Indigo,
+            Self::Purple,
             Self::Pink,
         ]
     }

@@ -1,7 +1,10 @@
-pub mod user;
 pub mod room;
+pub mod user;
+use self::{
+    room::{RoomMutation, RoomQuery, RoomSubscription},
+    user::{UserMutation, UserQuery},
+};
 use async_graphql::*;
-use self::{room::{RoomSubscription, RoomQuery, RoomMutation}, user::{UserQuery, UserMutation}};
 
 #[derive(MergedObject, Default)]
 pub struct Query(UserQuery, RoomQuery);
@@ -11,4 +14,3 @@ pub struct Mutation(UserMutation, RoomMutation);
 
 #[derive(MergedSubscription, Default)]
 pub struct Subscription(RoomSubscription);
-
