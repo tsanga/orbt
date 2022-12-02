@@ -212,9 +212,10 @@ impl RoomMutation {
 
         let Some(mut room) = room_store.get(&room_id)? else { return Err("Room not found".into()) };
 
-        if room.members.len() >= crate::model::room::MAX_ROOM_SIZE {
-            return Err("Room is full".into());
+        if room.is_owner(&user.id) {
+            return Err("You cannot leave a room you own".into());
         }
+
         ctx.require_act(RoomAction::Leave, &room)?;
         room.leave(&user.id)?;
 
@@ -291,6 +292,9 @@ impl RoomMutation {
         let Some(member) = room.get_member_mut(&user.id) else { return Err("You are not in this room".into()) };
        
         member.typing = typing;
+        
+        let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
+        stream_ctl.publish(room.clone());
 
         Ok(room.clone())
     }
@@ -424,7 +428,10 @@ impl<'a> Action<Room> for RoomAction<'a> {
                 }
                 Self::KickMember(id) => room.is_owner(user_id) && room.is_member(id),
                 Self::SetTypingStatus => {
-                    room.is_member(user_id) && room.get_member(user_id).map(|m| m.typing).unwrap_or(false)
+                    room.is_member(user_id) 
+                        && room.get_member(user_id)
+                            .map(|m| m.connected)
+                            .unwrap_or(false)
                 }
             },
         }
