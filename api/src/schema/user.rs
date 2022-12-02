@@ -16,7 +16,7 @@ impl UserQuery {
     }
 
     async fn me<'ctx>(&self, ctx: &Context<'ctx>) -> Result<User> {
-        let user = ctx.actor_user()?;
+        let user = ctx.user()?;
         Ok(user.clone())
     }
 }
@@ -32,7 +32,7 @@ impl UserMutation {
     }
 
     async fn set_user_name<'ctx>(&self, ctx: &Context<'ctx>, name: String) -> Result<User> {
-        let mut user = ctx.actor_user()?;
+        let mut user = ctx.user()?;
         user.name = name;
         // saved implicitly when dropped
         Ok(user.clone())

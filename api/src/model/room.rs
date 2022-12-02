@@ -40,7 +40,7 @@ impl Model for Room {
 #[ComplexObject]
 impl Room {
     async fn get_my_member<'ctx>(&self, ctx: &Context<'ctx>) -> async_graphql::Result<RoomMember> {
-        let user = ctx.actor_user()?;
+        let user = ctx.user()?;
         if let Some(member) = self.members.iter().find(|m| &m.user == &user.id) {
             return async_graphql::Result::Ok(member.clone());
         } else {
@@ -312,6 +312,10 @@ impl Room {
         } else {
             None
         }
+    }
+
+    pub fn get_by_member<'a>(room_store: &'a DataStore<Room>, user: &'a Id<User>) -> Option<DataStoreEntry<'a, Room>> {
+        Self::find_room(room_store, |r| r.is_member(user))
     }
 }
 
