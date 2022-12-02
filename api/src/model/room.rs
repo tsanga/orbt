@@ -1,7 +1,7 @@
 
-use async_graphql::{SimpleObject, Error, Enum, ComplexObject, Context};
+use async_graphql::{SimpleObject, Error, ComplexObject, Context};
 
-use crate::{types::{time::Time, token::Token, color::{Color, ColorType}, id::{Id, UuidId, NumId}}, auth::authority::Authority, store::DataStore, stream::StreamController};
+use crate::{types::{time::Time, token::Token, color::{Color, ColorType}, id::{Id, UuidId, NumId}}, auth::authority::Authority, store::DataStore};
 
 use super::{user::User, Model};
 
@@ -105,7 +105,7 @@ impl Room {
     }
 
     pub fn is_connected(&self, id: &Id<User>) -> bool {
-        self.get_member(id).map(|m| m.is_connected()).unwrap_or(false)
+        self.get_member(id).map(|m| m.connected).unwrap_or(false)
     }
 
     pub fn is_owner(&self, id: &Id<User>) -> bool {
@@ -212,8 +212,7 @@ impl Room {
             return Err("User not in room".into())
         }
         let id = self.messages.iter().map(|m| m.id.0.0).max().unwrap_or(0u32) + 1u32;
-        let msg = RoomChatMsg::new(Id(NumId::from_u32(id)), self.id.clone(), author.id.clone(), msg.to_string(), Time::now());
-        self.add_chat_msg(msg.clone());
+        let msg = RoomChatMsg::new(Id(NumId::from_u32(id)), author.id.clone(), msg.to_string(), Time::now());
         Ok(msg)
     }
 }
@@ -235,7 +234,7 @@ pub struct RoomMember {
     #[graphql(skip)]
     pub user: Id<User>,
     pub color: Color,
-    pub connection: RoomMemberConnection,
+    pub connected: bool,
 }
 
 impl RoomMember {
@@ -243,17 +242,8 @@ impl RoomMember {
         Self {
             user,
             color: color.unwrap_or(room.pick_available_color()).into(),
-            connection: RoomMemberConnection::new(),
+            connected: false,
         }
-    }
-
-    pub fn handle_disconnect(&self, room_id: &Id<Room>, stream_ctl: &StreamController) {
-        let room_member_update = RoomMemberUpdate::new_leave(room_id.clone(), self.clone());
-        stream_ctl.publish(room_member_update);
-    }
-
-    pub fn is_connected(&self) -> bool {
-        self.connection.connected_chat || self.connection.connected_members || self.connection.connected_remote
     }
 }
 
@@ -264,43 +254,20 @@ impl RoomMember {
         let user = user_store.get(&self.user)?.ok_or("User not found")?;
         Ok(user.clone())
     }
-
-    async fn online(&self) -> bool {
-        self.is_connected()
-    }
-}
-
-#[derive(Debug, Clone, SimpleObject)]
-pub struct RoomMemberConnection {
-    pub connected_chat: bool,
-    pub connected_members: bool,
-    pub connected_remote: bool,
-}
-
-impl RoomMemberConnection {
-    fn new() -> Self {
-        Self {
-            connected_chat: false,
-            connected_members: false,
-            connected_remote: false,
-        }
-    }
 }
 
 #[derive(Debug, Clone, SimpleObject)]
 pub struct RoomChatMsg {
     pub id: Id<Self>,
-    pub room: Id<Room>,
     pub author: Id<User>,
     pub msg: String,
     pub time: Time,
 }
 
 impl RoomChatMsg {
-    pub fn new(id: Id<Self>, room: Id<Room>, author: Id<User>, msg: String, time: Time) -> Self {
+    pub fn new(id: Id<Self>, author: Id<User>, msg: String, time: Time) -> Self {
         Self {
             id,
-            room,
             author,
             msg,
             time
@@ -328,54 +295,6 @@ impl RoomInvite {
         Self {
             token: Token::new_with_expiry(expiry),
             inviter,
-        }
-    }
-}
-
-#[derive(Debug, Enum, PartialEq, Eq, Clone, Copy)]
-pub enum RoomMemberUpdateType {
-    Join,
-    Leave,
-}
-
-#[derive(Debug, SimpleObject, Clone)]
-pub struct RoomMemberUpdate {
-    pub room: Id<Room>,
-    pub update_type: RoomMemberUpdateType,
-    pub room_member: RoomMember,
-}
-
-impl RoomMemberUpdate {
-    pub fn new_join(room: Id<Room>, room_member: RoomMember) -> Self {
-        Self {
-            room,
-            update_type: RoomMemberUpdateType::Join,
-            room_member,
-        }
-    }
-
-    pub fn new_leave(room: Id<Room>, room_member: RoomMember) -> Self {
-        Self {
-            room,
-            update_type: RoomMemberUpdateType::Leave,
-            room_member,
-        }
-    }
-}
-
-#[derive(Debug, SimpleObject, Clone)]
-pub struct RoomRemoteUpdate {
-    pub room: Id<Room>,
-    pub from: Option<Id<User>>,
-    pub to: Id<User>,
-}
-
-impl RoomRemoteUpdate {
-    pub fn new(room: Id<Room>, from: Option<Id<User>>, to: Id<User>) -> Self {
-        Self {
-            room,
-            from,
-            to
         }
     }
 }
