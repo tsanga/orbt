@@ -280,6 +280,20 @@ impl RoomMutation {
 
         Ok(room.clone())
     }
+
+    async fn set_typing_status<'ctx>(&self, ctx: &Context<'ctx>, typing: bool) -> Result<Room> {
+        let room_store = ctx.data::<DataStore<Room>>()?;
+        let user = ctx.actor_user()?;
+
+        let mut room = Room::find_room(room_store, |r| r.is_member(&user.id)).ok_or::<async_graphql::Error>("You are not in a room".into())?;
+        ctx.require_act(RoomAction::SetTypingStatus, &room)?;
+
+        let Some(member) = room.get_member_mut(&user.id) else { return Err("You are not in this room".into()) };
+       
+        member.typing = typing;
+
+        Ok(room.clone())
+    }
 }
 
 #[Subscription]
@@ -344,6 +358,7 @@ impl Subscriber<User, Room> for UserRoomSubscriber {
         let Ok(Some(mut room)) = self.room_store.get(&self.room) else { return };
         let Some(room_member) = room.get_member_mut(&self.user) else { return };
         room_member.connected = false;
+        room_member.typing = false;
         if let Some(remote) = room.remote.as_ref() {
             if remote == &self.user {
                 room.remote = room.owner.clone();
@@ -368,6 +383,7 @@ pub enum RoomAction<'a> {
     CreateInvite,
     RevokeInvite(&'a str), // string: invite token
     KickMember(&'a Id<User>),
+    SetTypingStatus,
     SubscribeChat,
     SubscribeMembers,
     SubscribeRemote,
@@ -407,6 +423,9 @@ impl<'a> Action<Room> for RoomAction<'a> {
                     invite_exists && is_member_or_owner && is_owner_or_created_invite
                 }
                 Self::KickMember(id) => room.is_owner(user_id) && room.is_member(id),
+                Self::SetTypingStatus => {
+                    room.is_member(user_id) && room.get_member(user_id).map(|m| m.typing).unwrap_or(false)
+                }
             },
         }
     }

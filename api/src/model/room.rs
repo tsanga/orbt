@@ -1,7 +1,7 @@
 
 use async_graphql::{SimpleObject, Error, ComplexObject, Context};
 
-use crate::{types::{time::Time, token::Token, color::{Color, ColorType}, id::{Id, UuidId, NumId}}, auth::authority::Authority, store::DataStore};
+use crate::{types::{time::Time, token::Token, color::{Color, ColorType}, id::{Id, UuidId, NumId}}, auth::authority::Authority, store::{DataStore, DataStoreEntry}};
 
 use super::{user::User, Model};
 
@@ -223,8 +223,13 @@ impl Room {
         room_store.data.lock().unwrap().values().any(|r| func(r))
     }
 
-    pub fn find_room<F: Fn(&Room) -> bool>(room_store: &DataStore<Room>, func: F) -> Option<Room> {
-        room_store.data.lock().unwrap().values().find(|r| func(r)).cloned()
+    pub fn find_room<F: Fn(&Room) -> bool>(room_store: &DataStore<Room>, func: F) -> Option<DataStoreEntry<Room>> {
+        let id = room_store.data.lock().unwrap().values().find(|r| func(r)).map(|r| r.id.clone());
+        if let Some(id) = id {
+            room_store.get(&id).ok().flatten()
+        } else {
+            None
+        }
     }
 }
 
@@ -235,6 +240,7 @@ pub struct RoomMember {
     pub user: Id<User>,
     pub color: Color,
     pub connected: bool,
+    pub typing: bool,
 }
 
 impl RoomMember {
@@ -243,6 +249,7 @@ impl RoomMember {
             user,
             color: color.unwrap_or(room.pick_available_color()).into(),
             connected: false,
+            typing: false,
         }
     }
 }
