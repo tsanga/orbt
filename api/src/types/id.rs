@@ -22,6 +22,9 @@ impl<M: Model> Id<M> {
     pub fn from_str(id: impl ToString) -> Result<Self, <<M as Model>::Id as IdType>::Error> {
         Ok(Self(<M as Model>::Id::from_str(id)?))
     }
+    pub fn from_model_id(id: <M as Model>::Id) -> Self {
+        Self(id)
+    }
 }
 
 impl<M: Model> PartialEq for Id<M> {

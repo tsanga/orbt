@@ -1,14 +1,14 @@
-use actix_web::{web, HttpResponse, HttpRequest};
-use async_graphql::{Schema, Data};
+use actix_web::{web, HttpRequest, HttpResponse};
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
+use async_graphql::{Data, Schema};
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse, GraphQLSubscription};
 
 use crate::auth::actor::Actor;
 use crate::model::room::Room;
 use crate::model::user::User;
-use crate::schema::{Query, Mutation, Subscription};
+use crate::schema::{Mutation, Query, Subscription};
 use crate::store::DataStore;
-use crate::stream::StreamController;
+use crate::stream::StreamControl;
 
 #[derive(Clone)]
 pub struct OrbtData {
@@ -16,17 +16,21 @@ pub struct OrbtData {
 }
 
 impl OrbtData {
-    pub fn new(user_store: DataStore<User>, room_store: DataStore<Room>, stream_ctl: StreamController) -> Self {
+    pub fn new(
+        user_store: DataStore<User>,
+        room_store: DataStore<Room>,
+        stream_user_room_ctl: StreamControl<User, Room>,
+    ) -> Self {
         Self {
             schema: Schema::build(
                 Query::default(),
                 Mutation::default(),
-                Subscription::default()
+                Subscription::default(),
             )
             .data(user_store)
             .data(room_store)
-            .data(stream_ctl)
-            .finish()
+            .data(stream_user_room_ctl)
+            .finish(),
         }
     }
 }
@@ -46,11 +50,11 @@ pub async fn graphql_root(
 }
 
 pub async fn graphql_playground() -> actix_web::Result<HttpResponse> {
-    Ok(
-        HttpResponse::Ok()
-            .content_type("text/html; charset=utf-8")
-            .body(playground_source(GraphQLPlaygroundConfig::new("/").subscription_endpoint("/")))
-    )
+    Ok(HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(playground_source(
+            GraphQLPlaygroundConfig::new("/").subscription_endpoint("/"),
+        )))
 }
 
 pub async fn graphql_ws(
@@ -60,7 +64,7 @@ pub async fn graphql_ws(
     payload: web::Payload,
 ) -> actix_web::Result<HttpResponse> {
     GraphQLSubscription::new(orbt_data.schema.clone())
-        .on_connection_init(|value| { on_connection_init(user_store, value) })
+        .on_connection_init(|value| on_connection_init(user_store, value))
         .start(&http, payload)
 }
 
@@ -69,7 +73,10 @@ pub async fn graphql_ws(
     payload: { Authorization: "<token>"  }
 }
 */
-async fn on_connection_init(user_store: web::Data<DataStore<User>>, value: serde_json::Value) -> async_graphql::Result<Data> {
+async fn on_connection_init(
+    user_store: web::Data<DataStore<User>>,
+    value: serde_json::Value,
+) -> async_graphql::Result<Data> {
     let Some(value) = value.as_object() else { return Err("connection_init payload must be an object".into()) };
     let Some(authorization) = value.get("Authorization") else { return Err("connection_init payload must have 'Authorization' key".into()) };
     let Some(token) = authorization.as_str() else { return Err("connection_init payload key 'Authorization' must have a string value".into()) };
