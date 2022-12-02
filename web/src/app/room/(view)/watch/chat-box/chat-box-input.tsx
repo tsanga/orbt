@@ -9,17 +9,14 @@ import { useMutation } from "react-relay";
 import { useState } from "react";
 import type { chatBoxInputSendMessageMutation } from "@gql/chatBoxInputSendMessageMutation.graphql";
 
-type Props = {
-  room: string;
-};
 
-export default function ChatBoxInput({ room }: Props) {
+export default function ChatBoxInput() {
   const [message, setMessage] = useState("");
 
   const [commitMutation, inFlight] =
     useMutation<chatBoxInputSendMessageMutation>(graphql`
-      mutation chatBoxInputSendMessageMutation($room: Id!, $msg: String!) {
-        sendChatMessage(room: $room, msg: $msg) {
+      mutation chatBoxInputSendMessageMutation($msg: String!) {
+        sendChatMessage(msg: $msg) {
           id
         }
       }
@@ -31,7 +28,7 @@ export default function ChatBoxInput({ room }: Props) {
     }
 
     commitMutation({
-      variables: { room: room, msg: message },
+      variables: { msg: message },
     });
 
     setMessage("");

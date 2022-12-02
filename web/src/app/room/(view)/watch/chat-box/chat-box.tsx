@@ -6,7 +6,7 @@ import ChatToolBar from "./chat-tool-bar";
 import ChatBoxInput from "./chat-box-input";
 import ChatIcon from "@assets/svg/icon/chat.svg";
 import Planets from "@assets/svg/planets.svg";
-import { graphql, useFragment } from "react-relay";
+import { graphql, useFragment, usePaginationFragment } from "react-relay";
 import { chatBoxMessages$key } from "@gql/chatBoxMessages.graphql";
 
 type Props = {
@@ -15,15 +15,21 @@ type Props = {
 };
 
 const ChatBox = ({ subheading, room }: Props) => {
-  const data = useFragment(
+  const data = usePaginationFragment(
     graphql`
-      fragment chatBoxMessages on Room {
+      fragment chatBoxMessages on Room
+      @refetchable(queryName: "chatBoxMessagesPaginationQuery") {
         id
-        messages {
-          id
-          msg
-          author
-          time
+        messages(first: $count, after: $cursor)
+          @connection(key: "chatBoxMessages_messages") {
+          edges {
+            node {
+              id
+              time
+              msg
+              author
+            }
+          }
         }
         members {
           user {

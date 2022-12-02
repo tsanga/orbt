@@ -314,7 +314,10 @@ impl Room {
         }
     }
 
-    pub fn get_by_member<'a>(room_store: &'a DataStore<Room>, user: &'a Id<User>) -> Option<DataStoreEntry<'a, Room>> {
+    pub fn get_by_member<'a>(
+        room_store: &'a DataStore<Room>,
+        user: &'a Id<User>,
+    ) -> Option<DataStoreEntry<'a, Room>> {
         Self::find_room(room_store, |r| r.is_member(user))
     }
 }

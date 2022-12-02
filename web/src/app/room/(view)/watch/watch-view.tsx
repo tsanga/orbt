@@ -25,8 +25,8 @@ const useRoomSubscription = (id: string) => {
   const config = useMemo(() => {
     return {
       subscription: graphql`
-        subscription watchViewRoomSubscription($id: Id!) {
-          room(room: $id) {
+        subscription watchViewRoomSubscription {
+          room {
             id
             ...chatParticipants
             ...chatBoxMessages

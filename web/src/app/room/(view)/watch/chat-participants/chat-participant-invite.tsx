@@ -3,21 +3,16 @@
 import * as styles from "./chat-participant-invite.css";
 import PlusIcon from "@assets/svg/icon/plus.svg";
 import { graphql, useMutation } from "react-relay";
-import { Room } from "@domain/models";
 import useRoomContext from "@hooks/use-room-context";
 import type { chatParticipantInviteMutation } from "@gql/chatParticipantInviteMutation.graphql";
 
-type Props = {
-  room: Room["id"];
-};
-
-export default function RoomChatParticipantInviteButton({ room }: Props) {
+export default function RoomChatParticipantInviteButton() {
   const [_state, dispatch] = useRoomContext();
 
   const [commitMutation, inFlight] =
     useMutation<chatParticipantInviteMutation>(graphql`
-      mutation chatParticipantInviteMutation($room: Id!) {
-        createRoomInvite(room: $room) {
+      mutation chatParticipantInviteMutation {
+        createRoomInvite {
           token
         }
       }
@@ -27,7 +22,7 @@ export default function RoomChatParticipantInviteButton({ room }: Props) {
     if (inFlight) return;
 
     commitMutation({
-      variables: { room: room },
+      variables: {},
       onCompleted: (data) => {
         dispatch({
           type: "SET_GENERATED_INVITE_CODE",

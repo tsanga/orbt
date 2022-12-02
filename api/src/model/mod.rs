@@ -1,4 +1,5 @@
 use crate::types::id::IdType;
+use async_graphql::*;
 
 pub mod room;
 pub mod user;
