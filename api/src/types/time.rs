@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 use async_graphql::scalar;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Time(pub u64);
@@ -10,9 +10,14 @@ impl Time {
     pub fn new(time: u64) -> Self {
         Self(time)
     }
-    
+
     pub fn now() -> Self {
-        Self(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64)
+        Self(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64,
+        )
     }
 
     pub fn duration(millis: u64) -> Self {
@@ -81,7 +86,6 @@ impl std::ops::Sub<Time> for u64 {
     }
 }
 
-
 scalar!(Time);
 
 #[cfg(test)]
@@ -89,7 +93,10 @@ mod tests {
     use super::*;
     #[test]
     fn time_now_is_valid() {
-        let sys_time_now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+        let sys_time_now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
         assert!(Time::now().0 == sys_time_now);
     }
 

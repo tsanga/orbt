@@ -1,7 +1,7 @@
-use async_graphql::{SimpleObject, InputObject};
-use serde::{Serialize, Deserialize};
-use uuid::Uuid;
 use super::time::Time;
+use async_graphql::{InputObject, SimpleObject};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 pub const TOKEN_LENGTH: usize = 6;
 
@@ -53,7 +53,7 @@ impl Token {
 
     pub fn check(&self, other: impl ToString) -> bool {
         if !self.is_valid() {
-            return false
+            return false;
         }
         if let Some(token) = self.token.as_ref() {
             token == &other.to_string()
@@ -64,7 +64,7 @@ impl Token {
 
     pub fn is_valid(&self) -> bool {
         if self.token.is_none() {
-            return false
+            return false;
         }
         if let Some(expires) = self.expires {
             expires > Time::now()

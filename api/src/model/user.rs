@@ -1,9 +1,18 @@
 use async_graphql::*;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{types::{token::Token, id::{Id, UuidId}}, store::DataStore};
+use crate::{
+    store::DataStore,
+    types::{
+        id::{Id, UuidId},
+        token::Token,
+    },
+};
 
-use super::{room::{RoomMember, Room}, Model};
+use super::{
+    room::{Room, RoomMember},
+    Model,
+};
 
 #[derive(Debug, Clone, SimpleObject, Serialize, Deserialize)]
 #[graphql(complex)]
@@ -36,13 +45,27 @@ impl User {
 impl User {
     async fn room<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Option<Room>> {
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let room_opt = room_store.data.lock().unwrap().values().into_iter().find(|r| r.is_member(&self.id)).cloned();
+        let room_opt = room_store
+            .data
+            .lock()
+            .unwrap()
+            .values()
+            .into_iter()
+            .find(|r| r.is_member(&self.id))
+            .cloned();
         Ok(room_opt)
     }
 
     async fn room_member<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Option<RoomMember>> {
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let room_opt = room_store.data.lock().unwrap().values().into_iter().find(|r| r.is_member(&self.id)).cloned();
+        let room_opt = room_store
+            .data
+            .lock()
+            .unwrap()
+            .values()
+            .into_iter()
+            .find(|r| r.is_member(&self.id))
+            .cloned();
         let Some(room) = room_opt else { return Ok(None) };
         let room_member = room.get_member(&self.id).cloned();
         Ok(room_member)

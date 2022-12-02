@@ -1,5 +1,5 @@
+use crate::{auth::authority::Authority, model::user::User, store::DataStore, types::id::Id};
 use async_graphql::*;
-use crate::{model::user::User, store::DataStore, auth::authority::Authority, types::id::Id};
 
 #[derive(Default)]
 pub struct UserQuery;
@@ -30,7 +30,7 @@ impl UserMutation {
         user_store.insert(user.clone());
         Ok(user)
     }
-    
+
     async fn set_user_name<'ctx>(&self, ctx: &Context<'ctx>, name: String) -> Result<User> {
         let mut user = ctx.actor_user()?;
         user.name = name;
