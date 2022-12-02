@@ -14,16 +14,20 @@ export default function RoomJoinView() {
   const [roomState, roomDispatch] = useRoomContext();
   const [appState, appDispatch] = useAppContext();
   const { user } = useAuth();
-  const [name, setName] = useState(user?.name);
+  const [name, setName] = useState(user?.name || "");
 
   const [commitMutation, _] = useMutation<joinViewRoomMutation>(graphql`
-    mutation joinViewRoomMutation($name: String) {
+    mutation joinViewRoomMutation($name: String!) {
       joinRoom {
         id
       }
 
       setUserName(name: $name) {
         id
+        name
+        token {
+          token
+        }
       }
     }
   `);
@@ -32,7 +36,10 @@ export default function RoomJoinView() {
     commitMutation({
       variables: { name },
       onCompleted: (data) => {
-        appDispatch(type: "SET_USER", user: { ...user, name: data.setUserName.name });
+        appDispatch({
+          type: "SET_USER",
+          user: data.setUserName,
+        });
         roomDispatch({ type: "SET_IS_CREATING_ROOM", isCreatingRoom: false });
         roomDispatch({ type: "SET_IS_JOINING_ROOM", isJoiningRoom: false });
         roomDispatch({ type: "SET_ROOM", room: data.joinRoom });
@@ -42,7 +49,7 @@ export default function RoomJoinView() {
 
   return (
     <IsolatedForm>
-      <h1 className={styles.title}>Join {state.room?.name}</h1>
+      <h1 className={styles.title}>Join {roomState.room?.name}</h1>
       <InputButtonGroup
         id="set-user-name"
         placeholder="ronald mcdonald"

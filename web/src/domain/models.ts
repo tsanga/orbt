@@ -4,7 +4,7 @@ export type User = {
   status?: string;
   profilePicture?: string;
   token?: {
-    token?: string;
+    token?: string | null;
   };
 };
 
