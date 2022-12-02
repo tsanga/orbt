@@ -157,9 +157,11 @@ impl RoomMutation {
         invite_token: Option<String>,
         color: Option<ColorType>,
     ) -> Result<Room> {
+        let user_store = ctx.data::<DataStore<User>>()?;
         let room_store = ctx.data::<DataStore<Room>>()?;
 
-        let user = ctx.actor_user()?;
+        let user_id = ctx.actor_user()?.id;
+        let user = user_store.get(&user_id)?.ok_or("User not found")?;
 
         if user.name.len() == 0 {
             return Err("You must set a name before joining a room".into());
@@ -202,18 +204,28 @@ impl RoomMutation {
         Ok(room.clone())
     }
 
-    async fn leave_room<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>) -> Result<User> {
+    async fn leave_room<'ctx>(&self, ctx: &Context<'ctx>) -> Result<User> {
+        let user = ctx.actor_user()?;
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
+        let room_id = room_store
+            .data
+            .lock()
+            .unwrap()
+            .values()
+            .find(|r| r.is_member(&user.id))
+            .map(|r| r.id.clone())
+            .ok_or::<async_graphql::Error>("You are not in a room".into())?;
+
+        let Some(mut room) = room_store.get(&room_id)? else { return Err("Room not found".into()) };
 
         if room.members.len() >= crate::model::room::MAX_ROOM_SIZE {
             return Err("Room is full".into());
         }
-        let actor = ctx.require_act(RoomAction::Leave, &room)?;
-        let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
+        ctx.require_act(RoomAction::Leave, &room)?;
         room.leave(&user.id)?;
 
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
+        stream_ctl.disconnect(&user.id);
         stream_ctl.publish(room.clone());
 
         Ok(user)
@@ -282,15 +294,15 @@ impl RoomSubscription {
     async fn room<'ctx>(
         &'ctx self,
         ctx: &Context<'ctx>,
-        id: Id<Room>,
+        room: Id<Room>,
     ) -> Result<impl Stream<Item = Room> + 'ctx> {
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let Some(mut room) = room_store.get(&id)? else { return Err("Room not found".into()) };
+        let Some(mut room) = room_store.get(&room)? else { return Err("Room not found".into()) };
 
         let actor = ctx.require_act(RoomAction::SubscribeChat, &room)?;
         let Actor::User(user) = actor else { return Err("Illegal actor".into()) };
 
-        let id = room.id.clone(); // room id
+        let room_id = room.id.clone(); // room id
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
 
         let Some(room_member) = room.get_member_mut(&user.id) else { return Err("You are not a member of that room".into()) };
