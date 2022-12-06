@@ -6,7 +6,7 @@ use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse, GraphQLSubscripti
 use crate::auth::actor::Actor;
 use crate::model::room::Room;
 use crate::model::user::User;
-use crate::schema::{Mutation, Query, Subscription};
+use crate::schema::{Mutation, Query, Subscription, Node};
 use crate::store::DataStore;
 use crate::stream::StreamControl;
 
@@ -27,6 +27,7 @@ impl OrbtData {
                 Mutation::default(),
                 Subscription::default(),
             )
+            .register_output_type::<Node>()
             .data(user_store)
             .data(room_store)
             .data(stream_user_room_ctl)

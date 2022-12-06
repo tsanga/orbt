@@ -45,7 +45,7 @@ impl FromContext for User {
         let Actor::User(user_id) = actor else { return Err("Requires 'user' actor type.".into()) };
         let user_store = ctx.data::<DataStore<User>>()?;
         let user = user_store
-            .get(user_id)?
+            .get(user_id)
             .ok_or::<async_graphql::Error>("User not found.".into())?;
         Ok(user)
     }
@@ -56,7 +56,7 @@ impl FromContext for Room {
         let actor = ctx.data::<Actor>()?;
         let Actor::User(user_id) = actor else { return Err("Requires 'user' actor type.".into()) };
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let room = Room::get_by_member(room_store, user_id).ok_or::<async_graphql::Error>("User is not in a room".into())?;
+        let room = Room::get_by_member_user_id(room_store, user_id).ok_or::<async_graphql::Error>("User is not in a room".into())?;
         Ok(room)
     }
 }

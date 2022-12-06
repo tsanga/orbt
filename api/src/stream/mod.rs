@@ -47,7 +47,7 @@ impl<S: Model + 'static, T: Model + 'static> StreamControl<S, T> {
     }
 
     pub fn publish(&self, msg: T) {
-        let topic_id: Id<T> = Id::from_model_id(msg.id().clone());
+        let topic_id = msg.model_id().clone();
         let mut publishers = self.publishers.lock().unwrap();
         for publisher in publishers.iter_mut().filter(|p| p.topic_id == topic_id) {
             publisher.publish(msg.clone());
@@ -230,7 +230,7 @@ mod tests {
             }
         });
 
-        let mut room = room_store.get(&room_id).unwrap().unwrap();
+        let mut room = room_store.get(&room_id).unwrap();
         room.name = "new room name".into();
 
         let msg = room.clone();
@@ -282,7 +282,7 @@ mod tests {
             assert_eq!(disconnect_count, 1);
         });
 
-        let mut room = room_store.get(&room_id).unwrap().unwrap();
+        let mut room = room_store.get(&room_id).unwrap();
         room.name = "new room name".into();
 
         let msg = room.clone();
@@ -353,7 +353,7 @@ mod tests {
         });
 
         // GET ROOM
-        let mut room = room_store.get(&room_id).unwrap().unwrap();
+        let mut room = room_store.get(&room_id).unwrap();
 
         // SET NAME
         room.name = "new room name".into();

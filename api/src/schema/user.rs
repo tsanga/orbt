@@ -11,7 +11,7 @@ pub struct UserMutation;
 impl UserQuery {
     async fn user<'ctx>(&self, ctx: &Context<'ctx>, id: Id<User>) -> Result<Option<User>> {
         let user_store = ctx.data::<DataStore<User>>()?;
-        let user = user_store.get(&id)?;
+        let user = user_store.get(&id);
         Ok(user.as_deref().cloned())
     }
 

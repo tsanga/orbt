@@ -22,7 +22,7 @@ pub struct RoomSubscription;
 impl RoomQuery {
     async fn room<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>) -> Result<Option<Room>> {
         let room_store = ctx.data::<DataStore<Room>>()?;
-        let room = room_store.get(&room)?;
+        let room = room_store.get(&room);
         if let Some(room) = &room {
             ctx.require_act(RoomAction::Get, &*room)?;
         }
@@ -77,10 +77,10 @@ impl RoomMutation {
 
         ctx.require_act(RoomAction::PassRemote(&to_user), &room)?;
 
-        if !room.is_member(&user.id) {
+        if !room.is_member_user(&user.id) {
             return Err("You are not a member of that room".into());
         }
-        if !room.is_member(&to_user) {
+        if !room.is_member_user(&to_user) {
             return Err("That user is not a member of the room".into());
         }
 
@@ -106,7 +106,7 @@ impl RoomMutation {
             return Err("You must set a name before joining a room".into());
         }
 
-        if Room::any_room(room_store, |r| r.is_member(&user.id)) {
+        if Room::any_room(room_store, |r| r.is_member_user(&user.id)) {
             return Err("You are already a member of another room".into());
         }
 
@@ -120,7 +120,7 @@ impl RoomMutation {
                 .ok_or::<async_graphql::Error>("You are not the owner of any room".into())?
         };
 
-        let Some(mut room) = room_store.get(&room_id)? else { return Err("Room not found".into()) };
+        let Some(mut room) = room_store.get(&room_id) else { return Err("Room not found".into()) };
 
         if room.members.len() >= crate::model::room::MAX_ROOM_SIZE {
             return Err("Room is full".into());
@@ -199,7 +199,7 @@ impl RoomMutation {
         let mut room = ctx.room()?;
         ctx.require_act(RoomAction::SetTypingStatus, &room)?;
 
-        let Some(member) = room.get_member_mut(&user.id) else { return Err("You are not in this room".into()) };
+        let Some(member) = room.get_member_by_user_id_mut(&user.id) else { return Err("You are not in this room".into()) };
 
         member.typing = typing;
 
@@ -226,7 +226,7 @@ impl RoomSubscription {
         let room_id = room.id.clone(); // room id
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
 
-        let Some(room_member) = room.get_member_mut(&user.id) else { return Err("You are not a member of this room".into()) };
+        let Some(room_member) = room.get_member_by_user_id_mut(&user.id) else { return Err("You are not a member of this room".into()) };
         if room_member.connected {
             return Err("You are already subscribed to this room".into());
         }
@@ -275,8 +275,8 @@ impl Subscriber<User, Room> for UserRoomSubscriber {
     }
 
     fn on_disconnect(&mut self) {
-        let Ok(Some(mut room)) = self.room_store.get(&self.room) else { return };
-        let Some(room_member) = room.get_member_mut(&self.user) else { return };
+        let Some(mut room) = self.room_store.get(&self.room) else { return };
+        let Some(room_member) = room.get_member_by_user_id_mut(&self.user) else { return };
         room_member.connected = false;
         room_member.typing = false;
         if let Some(remote) = room.remote.as_ref() {
@@ -320,15 +320,15 @@ impl<'a> Action<Room> for RoomAction<'a> {
                 | Self::SubscribeChat
                 | Self::SubscribeMembers
                 | Self::SubscribeRemote
-                | Self::Leave => room.is_member(user_id),
-                Self::GetMember(id) => room.is_member(user_id) && room.is_member(id),
+                | Self::Leave => room.is_member_user(user_id),
+                Self::GetMember(id) => room.is_member_user(user_id) && room.is_member_user(id),
                 Self::PassRemote(to_user_id) => room.can_pass_remote(user_id, to_user_id),
                 Self::Join(token) => {
                     room.check_invite(token)
                         && room.members.len() < crate::model::room::MAX_ROOM_SIZE
                 }
                 Self::CreateInvite => {
-                    room.is_member(user_id)
+                    room.is_member_user(user_id)
                         /*&& !room
                             .invites
                             .iter()
@@ -336,7 +336,7 @@ impl<'a> Action<Room> for RoomAction<'a> {
                 }
                 Self::RevokeInvite(token) => {
                     let invite_exists = room.invites.iter().any(|i| i.token.check(&token));
-                    let is_member_or_owner = room.is_member(user_id) || room.is_owner(user_id);
+                    let is_member_or_owner = room.is_member_user(user_id) || room.is_owner(user_id);
                     let is_owner_or_created_invite = room.is_owner(user_id)
                         || room
                             .invites
@@ -345,11 +345,11 @@ impl<'a> Action<Room> for RoomAction<'a> {
 
                     invite_exists && is_member_or_owner && is_owner_or_created_invite
                 }
-                Self::KickMember(id) => room.is_owner(user_id) && room.is_member(id),
+                Self::KickMember(id) => room.is_owner(user_id) && room.is_member_user(id),
                 Self::SetTypingStatus => {
-                    room.is_member(user_id)
+                    room.is_member_user(user_id)
                         && room
-                            .get_member(user_id)
+                            .get_member_by_user_id(user_id)
                             .map(|m| m.connected)
                             .unwrap_or(false)
                 }

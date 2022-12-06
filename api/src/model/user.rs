@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     types::{
-        id::{Id, UuidId},
+        id::Id,
         token::Token,
     }, auth::authority::Authority,
 };
@@ -16,6 +16,7 @@ use super::{
 #[derive(Debug, Clone, SimpleObject, Serialize, Deserialize)]
 #[graphql(complex)]
 pub struct User {
+    #[graphql(skip)]
     pub id: Id<Self>,
     pub name: String,
     //#[graphql(skip)]
@@ -23,10 +24,10 @@ pub struct User {
 }
 
 impl Model for User {
-    type Id = UuidId;
+    const ID_SUFFIX: &'static str = "user";
 
-    fn id(&self) -> &Self::Id {
-        &self.id.0
+    fn model_id(&self) -> &Id<Self> {
+        &self.id
     }
 }
 
@@ -42,6 +43,10 @@ impl User {
 
 #[ComplexObject]
 impl User {
+    pub async fn id(&self) -> String {
+        self.id.to_string()
+    }
+
     async fn room<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Room> {
         let room = ctx.room()?;
         Ok(room.clone())
@@ -49,7 +54,7 @@ impl User {
 
     async fn room_member<'ctx>(&self, ctx: &Context<'ctx>) -> Result<RoomMember> {
         let room = ctx.room()?;
-        let member = room.get_member(&self.id).ok_or::<async_graphql::Error>("You are not in a room".into())?;
+        let member = room.get_member_by_user_id(&self.id).ok_or::<async_graphql::Error>("You are not in a room".into())?;
         Ok(member.clone())
     }
 }
