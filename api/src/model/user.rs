@@ -24,7 +24,7 @@ pub struct User {
 }
 
 impl Model for User {
-    const ID_SUFFIX: &'static str = "user";
+    const ID_SUFFIX: &'static str = "u";
 
     fn model_id(&self) -> &Id<Self> {
         &self.id

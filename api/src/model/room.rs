@@ -31,7 +31,7 @@ pub struct Room {
 }
 
 impl Model for Room {
-    const ID_SUFFIX: &'static str = "room";
+    const ID_SUFFIX: &'static str = "r";
 
     fn model_id(&self) -> &Id<Self> {
         &self.id
