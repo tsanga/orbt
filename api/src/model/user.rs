@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     types::{
-        id::Id,
+        id::{Id, Identifiable},
         token::Token,
     }, auth::authority::Authority,
 };
@@ -24,11 +24,13 @@ pub struct User {
 }
 
 impl Model for User {
-    const ID_SUFFIX: &'static str = "u";
-
     fn model_id(&self) -> &Id<Self> {
         &self.id
     }
+}
+
+impl Identifiable for User {
+    const MODEL_IDENT: &'static str = "u";
 }
 
 impl User {
@@ -43,8 +45,8 @@ impl User {
 
 #[ComplexObject]
 impl User {
-    pub async fn id(&self) -> String {
-        self.id.to_string()
+    pub async fn id(&self) -> Id<Self> {
+        self.id.clone()
     }
 
     async fn room<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Room> {

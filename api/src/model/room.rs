@@ -5,7 +5,7 @@ use crate::{
     store::{DataStore, DataStoreEntry},
     types::{
         color::{Color, ColorType},
-        id::Id,
+        id::{Id, Identifiable},
         time::Time,
         token::Token,
     },
@@ -31,17 +31,19 @@ pub struct Room {
 }
 
 impl Model for Room {
-    const ID_SUFFIX: &'static str = "r";
-
     fn model_id(&self) -> &Id<Self> {
         &self.id
     }
 }
 
+impl Identifiable for Room {
+    const MODEL_IDENT: &'static str = "r";
+}
+
 #[ComplexObject]
 impl Room {
-    pub async fn id(&self) -> String {
-        self.id.to_string()
+    pub async fn id(&self) -> Id<Self> {
+        self.id.clone()
     }
 
     async fn get_my_member<'ctx>(&self, ctx: &Context<'ctx>) -> async_graphql::Result<RoomMember> {
@@ -358,16 +360,19 @@ impl RoomMember {
 }
 
 impl Model for RoomMember {
-    const ID_SUFFIX: &'static str = "rm";
     fn model_id(&self) -> &Id<Self> {
         &self.id
     }
 }
 
+impl Identifiable for RoomMember {
+    const MODEL_IDENT: &'static str = "rm";
+}
+
 #[ComplexObject]
 impl RoomMember {
-    pub async fn id(&self) -> String {
-        self.id.to_string()
+    pub async fn id(&self) -> Id<Self> {
+        self.id.clone()
     }
 
     async fn user(&self, ctx: &Context<'_>) -> async_graphql::Result<User> {
@@ -397,11 +402,13 @@ impl RoomChatMsg {
 }
 
 impl Model for RoomChatMsg {
-    const ID_SUFFIX: &'static str = "msg";
-
     fn model_id(&self) -> &Id<Self> {
         &self.id
     }
+}
+
+impl Identifiable for RoomChatMsg {
+    const MODEL_IDENT: &'static str = "msg";
 }
 
 #[derive(Debug, Clone, SimpleObject)]
