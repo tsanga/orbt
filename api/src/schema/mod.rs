@@ -1,10 +1,11 @@
 pub mod room;
 pub mod user;
 use crate::auth::authority::Authority;
+use crate::model::Model;
 use crate::model::room::RoomMember;
 use crate::model::{user::User, room::Room};
 use crate::store::DataStore;
-use crate::types::id::{Id, Identifiable};
+use crate::types::id::{Id};
 
 use self::room::RoomAction;
 use self::{
@@ -22,7 +23,7 @@ pub struct Mutation(UserMutation, RoomMutation);
 #[derive(MergedSubscription, Default)]
 pub struct Subscription(RoomSubscription);
 
-#[derive(Interface)]
+#[derive(Interface, Clone)]
 #[graphql(field(name = "id", type = "Id<Node>"))]
 pub enum Node {
     User(User),
@@ -30,8 +31,15 @@ pub enum Node {
     RoomMember(RoomMember),
 }
 
-impl Identifiable for Node {
-    const MODEL_IDENT: &'static str = "n";
+impl Model for Node {
+    const NODE_SUFFIX: &'static str = "n";
+    fn model_id(&self) -> &Id<Self> {
+        match self {
+            Node::User(user) => user.model_id().into(),
+            Node::Room(room) => room.model_id().into(),
+            Node::RoomMember(member) => member.model_id().into(),
+        }
+    }
 }
 
 impl Node {

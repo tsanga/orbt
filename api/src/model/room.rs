@@ -1,3 +1,4 @@
+use api_macro::Model;
 use async_graphql::{connection::*, ComplexObject, Context, Error, SimpleObject};
 
 use crate::{
@@ -5,7 +6,7 @@ use crate::{
     store::{DataStore, DataStoreEntry},
     types::{
         color::{Color, ColorType},
-        id::{Id, Identifiable},
+        id::{Id},
         time::Time,
         token::Token,
     },
@@ -16,7 +17,8 @@ use super::{user::User, Model};
 pub const MAX_ROOM_SIZE: usize = 5;
 pub const INVITE_EXPIRY_MINUTES: usize = 5;
 
-#[derive(Debug, Clone, SimpleObject)]
+#[derive(Debug, Clone, SimpleObject, Model)]
+#[model(node_suffix = "r")]
 #[graphql(complex)]
 pub struct Room {
     #[graphql(skip)]
@@ -28,16 +30,6 @@ pub struct Room {
     #[graphql(skip)]
     pub messages: Vec<RoomChatMsg>,
     pub invites: Vec<RoomInvite>,
-}
-
-impl Model for Room {
-    fn model_id(&self) -> &Id<Self> {
-        &self.id
-    }
-}
-
-impl Identifiable for Room {
-    const MODEL_IDENT: &'static str = "r";
 }
 
 #[ComplexObject]
@@ -335,7 +327,8 @@ impl Room {
     }
 }
 
-#[derive(Debug, Clone, SimpleObject)]
+#[derive(Debug, Clone, SimpleObject, Model)]
+#[model(node_suffix = "rm")]
 #[graphql(complex)]
 pub struct RoomMember {
     #[graphql(skip)]
@@ -357,16 +350,6 @@ impl RoomMember {
             typing: false,
         }
     }
-}
-
-impl Model for RoomMember {
-    fn model_id(&self) -> &Id<Self> {
-        &self.id
-    }
-}
-
-impl Identifiable for RoomMember {
-    const MODEL_IDENT: &'static str = "rm";
 }
 
 #[ComplexObject]
@@ -402,13 +385,10 @@ impl RoomChatMsg {
 }
 
 impl Model for RoomChatMsg {
+    const NODE_SUFFIX: &'static str = "msg";
     fn model_id(&self) -> &Id<Self> {
         &self.id
     }
-}
-
-impl Identifiable for RoomChatMsg {
-    const MODEL_IDENT: &'static str = "msg";
 }
 
 #[derive(Debug, Clone, SimpleObject)]

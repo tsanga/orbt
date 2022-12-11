@@ -1,19 +1,18 @@
+use api_macro::Model;
 use async_graphql::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     types::{
-        id::{Id, Identifiable},
+        id::{Id},
         token::Token,
     }, auth::authority::Authority,
 };
 
-use super::{
-    room::{Room, RoomMember},
-    Model,
-};
+use super::room::{Room, RoomMember};
 
-#[derive(Debug, Clone, SimpleObject, Serialize, Deserialize)]
+#[derive(Debug, Clone, SimpleObject, Serialize, Deserialize, Model)]
+#[model(node_suffix = "u")]
 #[graphql(complex)]
 pub struct User {
     #[graphql(skip)]
@@ -21,16 +20,6 @@ pub struct User {
     pub name: String,
     //#[graphql(skip)]
     pub token: Token,
-}
-
-impl Model for User {
-    fn model_id(&self) -> &Id<Self> {
-        &self.id
-    }
-}
-
-impl Identifiable for User {
-    const MODEL_IDENT: &'static str = "u";
 }
 
 impl User {
