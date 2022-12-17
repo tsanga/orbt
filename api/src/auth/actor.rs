@@ -80,7 +80,7 @@ impl Actor {
         let Self::User(user_id) = self else { return Err("Requires 'user' actor type.".into()) };
         let user_store = ctx.data::<DataStore<User>>()?;
         let user = user_store
-            .get(user_id)?
+            .get(user_id)
             .ok_or::<async_graphql::Error>("User not found.".into())?;
         Ok(user)
     }

@@ -2,6 +2,7 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql::{Data, Schema};
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse, GraphQLSubscription};
+use async_graphql::extensions::ApolloTracing;
 
 use crate::auth::actor::Actor;
 use crate::model::room::Room;
@@ -30,6 +31,7 @@ impl OrbtData {
             .data(user_store)
             .data(room_store)
             .data(stream_user_room_ctl)
+            .extension(ApolloTracing)
             .finish(),
         }
     }
