@@ -25,7 +25,7 @@ pub mod prelude {
 use async_graphql::Schema;
 use model::{room::Room, user::User};
 use store::DataStore;
-use stream::StreamController;
+use stream::StreamControl;
 
 pub async fn start_api_server<Fut>(callback: Option<impl FnOnce() -> Fut>) -> std::io::Result<()>
 where
@@ -33,9 +33,12 @@ where
 {
     let user_store = DataStore::<User>::new();
     let room_store = DataStore::<Room>::new();
-    let stream_ctl = StreamController::new();
-    let orbt_data =
-        server::OrbtData::new(user_store.clone(), room_store.clone(), stream_ctl.clone());
+    let stream_user_room_ctl = StreamControl::<User, Room>::new();
+    let orbt_data = server::OrbtData::new(
+        user_store.clone(),
+        room_store.clone(),
+        stream_user_room_ctl.clone(),
+    );
     let address = std::env::var("ADDRESS").unwrap_or("0.0.0.0".to_string());
     let port = std::env::var("PORT").unwrap_or("8080".to_string());
 
@@ -70,7 +73,7 @@ where
             .app_data(Data::new(orbt_data.clone()))
             .app_data(Data::new(user_store.clone()))
             .app_data(Data::new(room_store.clone()))
-            .app_data(Data::new(stream_ctl.clone()))
+            .app_data(Data::new(stream_user_room_ctl.clone()))
             .service(
                 web::resource("/")
                     .guard(guard::Post())

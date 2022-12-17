@@ -1,5 +1,5 @@
+use crate::{auth::authority::Authority, model::user::User, store::DataStore, types::id::Id};
 use async_graphql::*;
-use crate::{model::user::User, store::DataStore, auth::authority::Authority, types::id::Id};
 
 #[derive(Default)]
 pub struct UserQuery;
@@ -11,13 +11,13 @@ pub struct UserMutation;
 impl UserQuery {
     async fn user<'ctx>(&self, ctx: &Context<'ctx>, id: Id<User>) -> Result<Option<User>> {
         let user_store = ctx.data::<DataStore<User>>()?;
-        let user = user_store.get(&id)?;
+        let user = user_store.get(&id);
         Ok(user.as_deref().cloned())
     }
 
     async fn me<'ctx>(&self, ctx: &Context<'ctx>) -> Result<User> {
-        let user = ctx.actor_user()?;
-        Ok(user)
+        let user = ctx.user()?;
+        Ok(user.clone())
     }
 }
 
@@ -30,12 +30,9 @@ impl UserMutation {
         user_store.insert(user.clone());
         Ok(user)
     }
-    
-    async fn set_user_name<'ctx>(&self, ctx: &Context<'ctx>, name: String) -> Result<User> {
-        let user_id = ctx.actor_user()?.id;
-        let user_store = ctx.data::<DataStore<User>>()?;
 
-        let mut user = user_store.get(&user_id)?.ok_or::<async_graphql::Error>("User not found".into())?;
+    async fn set_user_name<'ctx>(&self, ctx: &Context<'ctx>, name: String) -> Result<User> {
+        let mut user = ctx.user()?;
         user.name = name;
         // saved implicitly when dropped
         Ok(user.clone())

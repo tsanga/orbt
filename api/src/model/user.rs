@@ -1,25 +1,25 @@
+use api_macro::Model;
 use async_graphql::*;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{types::{token::Token, id::{Id, UuidId}}, store::DataStore};
+use crate::{
+    types::{
+        id::{Id},
+        token::Token,
+    }, auth::authority::Authority,
+};
 
-use super::{room::{RoomMember, Room}, Model};
+use super::room::{Room, RoomMember};
 
-#[derive(Debug, Clone, SimpleObject, Serialize, Deserialize)]
+#[derive(Debug, Clone, SimpleObject, Serialize, Deserialize, Model)]
+#[model(node_suffix = "u")]
 #[graphql(complex)]
 pub struct User {
+    #[graphql(skip)]
     pub id: Id<Self>,
     pub name: String,
     //#[graphql(skip)]
     pub token: Token,
-}
-
-impl Model for User {
-    type Id = UuidId;
-
-    fn id(&self) -> &Self::Id {
-        &self.id.0
-    }
 }
 
 impl User {
@@ -34,17 +34,18 @@ impl User {
 
 #[ComplexObject]
 impl User {
-    async fn room<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Option<Room>> {
-        let room_store = ctx.data::<DataStore<Room>>()?;
-        let room_opt = room_store.data.lock().unwrap().values().into_iter().find(|r| r.is_member(&self.id)).cloned();
-        Ok(room_opt)
+    pub async fn id(&self) -> Id<Self> {
+        self.id.clone()
     }
 
-    async fn room_member<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Option<RoomMember>> {
-        let room_store = ctx.data::<DataStore<Room>>()?;
-        let room_opt = room_store.data.lock().unwrap().values().into_iter().find(|r| r.is_member(&self.id)).cloned();
-        let Some(room) = room_opt else { return Ok(None) };
-        let room_member = room.get_member(&self.id).cloned();
-        Ok(room_member)
+    async fn room<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Room> {
+        let room = ctx.room()?;
+        Ok(room.clone())
+    }
+
+    async fn room_member<'ctx>(&self, ctx: &Context<'ctx>) -> Result<RoomMember> {
+        let room = ctx.room()?;
+        let member = room.get_member_by_user_id(&self.id).ok_or::<async_graphql::Error>("You are not in a room".into())?;
+        Ok(member.clone())
     }
 }

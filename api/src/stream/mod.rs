@@ -1,6 +1,4 @@
 use std::{
-    any::{Any, TypeId},
-    collections::HashMap,
     pin::Pin,
     sync::{Arc, Mutex},
     task::{Context, Poll},
@@ -8,217 +6,370 @@ use std::{
 
 use futures::channel::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use futures_util::{Stream, StreamExt};
-use slab::Slab;
 
-use crate::{
-    model::{room::Room, user::User},
-    store::DataStore,
-    types::id::Id,
-};
-
-pub struct StreamSenders<T: Send + Sync + Clone + 'static>(Slab<UnboundedSender<T>>);
+use crate::{model::Model, types::id::Id};
 
 #[derive(Clone)]
-pub struct StreamController {
-    subscribers: Arc<Mutex<HashMap<TypeId, Box<dyn Any + Send>>>>,
+pub struct StreamControl<S: Model + 'static, T: Model + 'static> {
+    publishers: Arc<Mutex<Vec<ModelPublisher<S, T>>>>,
 }
 
-impl StreamController {
+impl<S: Model + 'static, T: Model + 'static> StreamControl<S, T> {
     pub fn new() -> Self {
         Self {
-            subscribers: Arc::new(Mutex::new(HashMap::new())),
+            publishers: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
-    pub fn publish<T: Send + Sync + Clone + 'static>(&self, msg: T) {
-        with_senders::<T, _, _>(&self, |senders| {
-            for (_, sender) in senders.0.iter_mut() {
-                sender.start_send(msg.clone()).ok();
-            }
-        });
+    pub fn subscribe<Sub: Subscriber<S, T> + 'static>(&self, sub: Sub) -> ModelSubscriber<S, T> {
+        let (tx, rx) = mpsc::unbounded::<T>();
+
+        let subscriber_id = sub.subscriber_id();
+        let topic_id = sub.topic_id();
+
+        let publisher = ModelPublisher::new(subscriber_id.clone(), topic_id.clone(), tx);
+        self.publishers.lock().unwrap().push(publisher);
+
+        ModelSubscriber::new(Box::new(sub), rx, &self)
     }
 
-    pub fn subscribe<'a, T, F>(
-        &'a self,
-        user: &Id<User>,
-        room: &Id<Room>,
-        user_store: DataStore<User>,
-        room_store: DataStore<Room>,
-        on_drop: F,
-    ) -> impl Stream<Item = T> + 'a
-    where
-        T: Send + Sync + Clone + 'static,
-        F: FnOnce(&UserStreamData) + 'a,
-    {
-        with_senders::<T, _, _>(&self, |senders| {
-            let (sender, receiver) = mpsc::unbounded();
-            let id = senders.0.insert(sender);
-            UserStreamSubscriber::<T, F>::new(
-                id, receiver, user, room, user_store, room_store, on_drop, &self,
-            )
-        })
+    pub fn get_publisher(
+        &self,
+        subscriber_id: &Id<S>,
+        topic_id: &Id<T>,
+    ) -> Option<ModelPublisher<S, T>> {
+        self.publishers
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|s| &s.subscriber_id == subscriber_id && &s.topic_id == topic_id)
+            .cloned()
+    }
+
+    pub fn publish(&self, msg: T) {
+        let topic_id = msg.model_id().clone();
+        let mut publishers = self.publishers.lock().unwrap();
+        for publisher in publishers.iter_mut().filter(|p| p.topic_id == topic_id) {
+            publisher.publish(msg.clone());
+        }
+    }
+
+    pub fn disconnect(&self, subscriber_id: &Id<S>) -> usize {
+        let mut count = 0usize;
+        let mut publishers = self.publishers.lock().unwrap();
+        for publisher in publishers
+            .iter()
+            .filter(|p| &p.subscriber_id == subscriber_id)
+        {
+            publisher.disconnect();
+            count += 1;
+        }
+        publishers.retain(|s| &s.subscriber_id != subscriber_id);
+        count
+    }
+
+    fn handle_disconnect(&self, subscriber_id: &Id<S>) {
+        let mut publishers = self.publishers.lock().unwrap();
+        publishers.retain(|s| (&s.subscriber_id != subscriber_id));
     }
 }
 
-fn with_senders<T, F, R>(ctl: &StreamController, func: F) -> R
-where
-    T: Send + Sync + Clone + 'static,
-    F: FnOnce(&mut StreamSenders<T>) -> R,
-{
-    let mut map = ctl.subscribers.lock().unwrap();
-    let senders = map
-        .entry(TypeId::of::<StreamSenders<T>>())
-        .or_insert_with(|| Box::new(StreamSenders::<T>(Default::default())));
-    func(senders.downcast_mut::<StreamSenders<T>>().unwrap())
+#[derive(Clone)]
+pub struct ModelPublisher<S: Model + 'static, T: Model + 'static> {
+    subscriber_id: Id<S>,
+    topic_id: Id<T>,
+    sender: UnboundedSender<T>,
 }
 
-pub struct UserStreamData {
-    pub user: Id<User>,
-    pub room: Id<Room>,
-    pub user_store: DataStore<User>,
-    pub room_store: DataStore<Room>,
-}
-
-impl UserStreamData {
-    fn new(
-        user: Id<User>,
-        room: Id<Room>,
-        user_store: DataStore<User>,
-        room_store: DataStore<Room>,
-    ) -> Self {
+impl<S: Model + 'static, T: Model + 'static> ModelPublisher<S, T> {
+    fn new(subscriber_id: Id<S>, topic_id: Id<T>, sender: UnboundedSender<T>) -> Self {
         Self {
-            user,
-            room,
-            user_store,
-            room_store,
+            subscriber_id,
+            topic_id,
+            sender,
         }
+    }
+
+    fn publish(&mut self, msg: T) {
+        self.sender.start_send(msg).ok(); // don't care if send fails, if its fails it means we were disconnected
+    }
+
+    fn disconnect(&self) {
+        self.sender.close_channel();
     }
 }
 
-pub struct UserStreamSubscriber<
-    'a,
-    T: Send + Sync + Clone + 'static,
-    F: FnOnce(&UserStreamData),
-> {
-    id: usize,
+pub struct ModelSubscriber<'a, S: Model + 'static, T: Model + 'static> {
+    subscriber: Box<dyn Subscriber<S, T>>,
+    subscriber_id: Id<S>,
+    topic_id: Id<T>,
     receiver: UnboundedReceiver<T>,
-    on_drop: Option<Box<F>>,
-    data: UserStreamData,
-    ctl: &'a StreamController,
+    ctl: &'a StreamControl<S, T>,
 }
 
-impl<'a, T: Send + Sync + Clone + 'static, F: FnOnce(&UserStreamData)>
-    UserStreamSubscriber<'a, T, F>
-{
-    pub fn new(
-        id: usize,
+impl<'a, S: Model + 'static, T: Model + 'static> Unpin for ModelSubscriber<'a, S, T> {}
+
+impl<'a, S: Model + 'static, T: Model + 'static> ModelSubscriber<'a, S, T> {
+    fn new(
+        sub: Box<dyn Subscriber<S, T>>,
         receiver: UnboundedReceiver<T>,
-        user: &Id<User>,
-        room: &Id<Room>,
-        user_store: DataStore<User>,
-        room_store: DataStore<Room>,
-        on_drop: F,
-        ctl: &'a StreamController,
+        ctl: &'a StreamControl<S, T>,
     ) -> Self {
-        let on_drop = Some(Box::new(on_drop));
-        let data = UserStreamData::new(user.clone(), room.clone(), user_store, room_store);
+        let subscriber_id = sub.subscriber_id().clone();
+        let topic_id = sub.topic_id().clone();
         Self {
-            id,
+            subscriber: sub,
+            subscriber_id,
+            topic_id,
             receiver,
-            on_drop,
-            data,
             ctl,
         }
     }
 }
 
-impl<'a, T: Send + Sync + Clone + 'static, F: FnOnce(&UserStreamData)> Stream
-    for UserStreamSubscriber<'a, T, F>
-{
+impl<'a, S: Model + 'static, T: Model + 'static> Stream for ModelSubscriber<'a, S, T> {
     type Item = T;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.receiver.poll_next_unpin(cx)
+        let poll = self.receiver.poll_next_unpin(cx);
+        if let Poll::Ready(Some(msg)) = poll {
+            let msg = self.subscriber.map_msg(msg);
+            return Poll::Ready(msg);
+        }
+        poll
     }
 }
 
-impl<'a, T: Send + Sync + Clone + 'static, F: FnOnce(&UserStreamData)> Drop
-    for UserStreamSubscriber<'a, T, F>
-{
+impl<'a, S: Model + 'static, T: Model + 'static> Drop for ModelSubscriber<'a, S, T> {
     fn drop(&mut self) {
-        if let Some(on_drop) = self.on_drop.take() {
-            on_drop(&self.data);
-        }
-        with_senders::<T, _, _>(&self.ctl, |senders| senders.0.remove(self.id));
+        self.subscriber.on_disconnect();
+        self.ctl.handle_disconnect(&self.subscriber_id);
     }
+}
+
+pub trait Subscriber<S: Model + 'static, T: Model + 'static>: Send + Sync {
+    fn subscriber_id(&self) -> &Id<S>;
+    fn topic_id(&self) -> &Id<T>;
+    fn on_disconnect(&mut self);
+    fn map_msg(&self, msg: T) -> Option<T>;
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{
-        model::{room::RoomChatMsg, user::User},
+        model::{room::Room, user::User},
         store::DataStore,
-        types::time::Time,
     };
 
-    #[tokio::test]
-    async fn stream_subscribe_and_publish() {
-        let user_store = DataStore::<User>::new();
-        let room_store = DataStore::<Room>::new();
-        let ctl = StreamController::new();
+    use super::*;
 
-        let user = User::new("jonah".to_string());
-        let user_id = user.id.clone();
-        let mut room = Room::new("test".to_string());
-        let room_id = room.id.clone();
-        room.init_owner(&user);
-        room.join(&user, None).unwrap();
-        room_store.insert(room);
-        user_store.insert(user);
+    #[derive(Clone)]
+    struct UserRoomSubscriber {
+        room_store: DataStore<Room>,
+        user: Id<User>,
+        room: Id<Room>,
+    }
 
-        let sub_ctl = ctl.clone();
-        let sub_user_id = user_id.clone();
-        let sub_room_id = room_id.clone();
-        let sub_task = tokio::spawn(async move {
-            //println!("subscribing...");
-            let mut stream = sub_ctl.subscribe::<RoomChatMsg, _>(
-                &sub_user_id,
-                &sub_room_id,
-                user_store.clone(),
-                room_store.clone(),
-                move |data| {
-                    let room = &mut data.room_store.get(&data.room).unwrap().unwrap();
-                    let user = &data.user_store.get(&data.user).unwrap().unwrap();
-                    room.leave(&user).unwrap();
-                    //println!("dropped");
-                    assert!(!room.is_member(&user.id))
-                },
-            );
-            //println!("subscribed");
-
-            while let Some(msg) = &stream.next().await {
-                //println!("{:?}", msg);
-                assert_eq!(msg.msg, "hello".to_string());
-                assert_eq!(&msg.room, &sub_room_id);
-                assert_eq!(&msg.author, &sub_user_id);
-                break; // abort after 1 message
+    impl UserRoomSubscriber {
+        fn new(room_store: DataStore<Room>, user: Id<User>, room: Id<Room>) -> Self {
+            Self {
+                room_store,
+                user,
+                room,
             }
-            //println!("done");
-        });
+        }
+    }
 
-        let pub_task = tokio::spawn(async move {
-            ctl.publish(RoomChatMsg::new(
-                Id::new(),
-                room_id.clone(),
-                user_id.clone(),
-                "hello".to_string(),
-                Time::now(),
+    impl Subscriber<User, Room> for UserRoomSubscriber {
+        fn subscriber_id(&self) -> &Id<User> {
+            &self.user
+        }
+
+        fn topic_id(&self) -> &Id<Room> {
+            &self.room
+        }
+
+        fn on_disconnect(&mut self) {
+            // intentionally blank
+        }
+
+        fn map_msg(&self, msg: Room) -> Option<Room> {
+            Some(msg)
+        }
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_publish() {
+        // SETUP CONTROL, STORE, MODELS
+        let ctl = StreamControl::<User, Room>::new();
+        let room_store = DataStore::<Room>::new();
+        let room = Room::new("test_room".into());
+        let room_id = room.id.clone();
+        room_store.insert(room);
+        let user = User::new("test_user".into());
+
+        // SUBSCRIBE
+        let sub_ctl = ctl.clone();
+        let sub_room_store = room_store.clone();
+        let sub_user_id = user.id.clone();
+        let sub_room_id = room_id.clone();
+
+        let task_subscribe = tokio::spawn(async move {
+            // subscribe
+            let mut sub_stream = sub_ctl.subscribe(UserRoomSubscriber::new(
+                sub_room_store,
+                sub_user_id,
+                sub_room_id,
             ));
-            //println!("published!");
+
+            // wait for msg
+            while let Some(msg) = &sub_stream.next().await {
+                //println!("Subscriber received msg: {:?}", msg);
+                assert_eq!(&msg.name, "new room name");
+                break; // abort after 1 msg
+            }
         });
 
-        pub_task.await.unwrap();
-        sub_task.await.unwrap();
+        let mut room = room_store.get(&room_id).unwrap();
+        room.name = "new room name".into();
+
+        let msg = room.clone();
+        let task_publish = tokio::spawn(async move {
+            //println!("Publishing... {:?}", msg);
+            ctl.publish(msg);
+            //println!("Published!");
+        });
+
+        task_publish.await.unwrap();
+        task_subscribe.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_disconnect() {
+        let ctl = StreamControl::<User, Room>::new();
+        let room_store = DataStore::<Room>::new();
+        let room = Room::new("test_room".into());
+        let room_id = room.id.clone();
+        room_store.insert(room);
+        let user = User::new("test_user".into());
+
+        // SUBSCRIBE
+        let sub_ctl = ctl.clone();
+        let sub_room_store = room_store.clone();
+        let sub_user_id = user.id.clone();
+        let sub_room_id = room_id.clone();
+
+        let task_subscribe = tokio::spawn(async move {
+            // subscribe
+            //println!("subscribing");
+            let mut stream = sub_ctl.subscribe(UserRoomSubscriber::new(
+                sub_room_store,
+                sub_user_id,
+                sub_room_id,
+            ));
+            while let Some(msg) = stream.next().await {
+                //println!("Subscriber(1) received msg: {:?}", msg);
+                assert_eq!(&msg.name, "new room name");
+                break; // abort after 1 msg
+            }
+        });
+
+        let dis_ctl = ctl.clone();
+        let task_disconnect = tokio::spawn(async move {
+            //println!("disconnecting");
+            let disconnect_count = dis_ctl.disconnect(&user.id);
+            //println!("disconnected {}", disconnect_count);
+            assert_eq!(disconnect_count, 1);
+        });
+
+        let mut room = room_store.get(&room_id).unwrap();
+        room.name = "new room name".into();
+
+        let msg = room.clone();
+        let task_publish = tokio::spawn(async move {
+            //println!("Publishing... {:?}", msg);
+            ctl.publish(msg);
+            //println!("Published!");
+        });
+
+        task_publish.await.unwrap();
+        task_subscribe.await.unwrap();
+        task_disconnect.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_publish_multiple_subscribers() {
+        // SETUP CONTROL, STORE, MODELS
+        let ctl = StreamControl::<User, Room>::new();
+        let room_store = DataStore::<Room>::new();
+        let room = Room::new("test_room".into());
+        let room_id = room.id.clone();
+        room_store.insert(room);
+
+        // SUBSCRIBE USER 1
+        let user1 = User::new("test_user1".into());
+        let sub_ctl = ctl.clone();
+        let sub_room_store = room_store.clone();
+        let sub_user_id = user1.id.clone();
+        let sub_room_id = room_id.clone();
+
+        let task_subscribe1 = tokio::spawn(async move {
+            // subscribe
+            let mut sub_stream = sub_ctl.subscribe(UserRoomSubscriber::new(
+                sub_room_store,
+                sub_user_id,
+                sub_room_id,
+            ));
+
+            // wait for msg
+            while let Some(msg) = &sub_stream.next().await {
+                //println!("Subscriber(1) received msg: {:?}", msg);
+                assert_eq!(&msg.name, "new room name");
+                break; // abort after 1 msg
+            }
+        });
+
+        // SUBSCRIBE USER 2
+        let user2 = User::new("test_user2".into());
+        let sub_ctl = ctl.clone();
+        let sub_room_store = room_store.clone();
+        let sub_user_id = user2.id.clone();
+        let sub_room_id = room_id.clone();
+
+        let task_subscribe2 = tokio::spawn(async move {
+            // subscribe
+            let mut sub_stream = sub_ctl.subscribe(UserRoomSubscriber::new(
+                sub_room_store,
+                sub_user_id,
+                sub_room_id,
+            ));
+
+            // wait for msg
+            while let Some(msg) = &sub_stream.next().await {
+                //println!("Subscriber(2) received msg: {:?}", msg);
+                assert_eq!(&msg.name, "new room name");
+                break; // abort after 1 msg
+            }
+        });
+
+        // GET ROOM
+        let mut room = room_store.get(&room_id).unwrap();
+
+        // SET NAME
+        room.name = "new room name".into();
+
+        let msg = room.clone();
+        // PUBLISH
+        let task_publish = tokio::spawn(async move {
+            //println!("Publishing...");
+            ctl.publish(msg);
+            //println!("Published!");
+        });
+
+        // AWAIT
+        task_publish.await.unwrap();
+        let (s1, s2) = futures::join!(task_subscribe1, task_subscribe2);
+        s1.unwrap();
+        s2.unwrap();
     }
 }

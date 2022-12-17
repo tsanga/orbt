@@ -1,7 +1,12 @@
 use actix_web::{web, HttpRequest};
+use async_graphql::Context;
 use serde::{Deserialize, Serialize};
 
-use crate::{store::DataStore, model::user::User};
+use crate::{
+    model::user::User,
+    store::{DataStore, DataStoreEntry},
+    types::id::Id,
+};
 
 use super::action::Action;
 
@@ -9,7 +14,7 @@ use super::action::Action;
 #[serde(untagged)]
 pub enum Actor {
     None,
-    User(User),
+    User(Id<User>),
     Internal,
 }
 
@@ -17,18 +22,27 @@ impl Actor {
     pub fn identify(user_store: web::Data<DataStore<User>>, request: HttpRequest) -> Self {
         if let Some(identifier) = request.headers().get("Authorization") {
             let identifier = identifier.to_str().unwrap();
-            return Self::identify_with_token(user_store, identifier)
+            return Self::identify_with_token(user_store, identifier);
         }
         Self::None
     }
 
-    pub fn identify_with_token(user_store: web::Data<DataStore<User>>, identifier: impl ToString) -> Self {
+    pub fn identify_with_token(
+        user_store: web::Data<DataStore<User>>,
+        identifier: impl ToString,
+    ) -> Self {
         let identifier = identifier.to_string();
         if identifier == option_env!("API_TOKEN").unwrap_or("ORBT_INTERNAL") {
             return Self::Internal;
         } else {
-            if let Some(user) = user_store.data.lock().unwrap().values().find(|u| u.token.check(&identifier)) {
-                return Self::User(user.clone());
+            if let Some(user) = user_store
+                .data
+                .lock()
+                .unwrap()
+                .values()
+                .find(|u| u.token.check(&identifier))
+            {
+                return Self::User(user.id.clone());
             }
         }
         Self::None
@@ -38,37 +52,37 @@ impl Actor {
         action.can_act(&self, model)
     }
 
-    #[allow(dead_code)]
     pub fn is_user_or_internal(&self) -> bool {
         match self {
-            Self::None => false,
-            Self::User(_) => true,
-            Self::Internal => true,
+            Self::User(_) | Self::Internal => true,
+            _ => false,
         }
     }
 
-    #[allow(dead_code)]
     pub fn is_user(&self) -> bool {
         match self {
             Self::User(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
-    #[allow(dead_code)]
     pub fn is_internal(&self) -> bool {
         match self {
             Self::Internal => true,
-            _ => false
+            _ => false,
         }
     }
 
-    #[allow(dead_code)]
-    pub fn as_user(&self) -> Option<User> {
-        match self {
-            Self::User(user) => Some(user.clone()),
-            _ => None
-        }
+    pub fn user<'ctx>(
+        self,
+        ctx: &Context<'ctx>,
+    ) -> async_graphql::Result<DataStoreEntry<'ctx, User>> {
+        let Self::User(user_id) = self else { return Err("Requires 'user' actor type.".into()) };
+        let user_store = ctx.data::<DataStore<User>>()?;
+        let user = user_store
+            .get(user_id)
+            .ok_or::<async_graphql::Error>("User not found.".into())?;
+        Ok(user)
     }
 }
 
@@ -82,9 +96,10 @@ mod tests {
         let user_store = DataStore::<User>::new();
         user_store.insert(user.clone());
         let actor = Actor::identify_with_token(web::Data::new(user_store), user.token.to_string());
-        assert_eq!(
-            actor.as_user().unwrap().token.token.as_ref().unwrap(), 
-            user.token.token.as_ref().unwrap()
-        );
+        if let Actor::User(id) = actor {
+            assert_eq!(id, user.id);
+        } else {
+            panic!("Expected Actor::User, got {:?}", actor);
+        }
     }
 }

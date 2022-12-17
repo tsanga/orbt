@@ -10,7 +10,7 @@ on:
       - ".github/workflows/api.yml"
 jobs:
   cargo:
-    name: "api: cargo check & test"
+    name: "api: cargo test"
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -35,13 +35,6 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
         key: ${{ runner.os }}-cargo-${{ hashFiles('./api/Cargo.lock') }}
-
-    - name: Check
-      uses: actions-rs/cargo@v1
-      with:
-        toolchain: 1.65.0
-        command: check
-        args: --manifest-path ./api/Cargo.toml
 
     - name: Test
       uses: actions-rs/cargo@v1
