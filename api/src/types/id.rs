@@ -48,9 +48,6 @@ impl<M: Model> Id<M> {
         }
         None
     }
-    pub fn from_model_id(id: <M as Model>::Id) -> Self {
-        Self(id)
-    }
 }
 
 impl<M: Any> Display for Id<M> {
