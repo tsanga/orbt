@@ -8,6 +8,8 @@ use dotenv::dotenv;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    std::env::set_var("RUST_LOG", "debug");
+    env_logger::init();
     dotenv().ok();
 
     api::start_api_server(Some(|| async {

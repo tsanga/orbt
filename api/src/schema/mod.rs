@@ -1,11 +1,9 @@
 pub mod room;
 pub mod user;
+
 use crate::auth::authority::Authority;
-use crate::model::Model;
 use crate::model::room::RoomMember;
-use crate::model::{user::User, room::Room};
-use crate::store::DataStore;
-use crate::types::id::{Id};
+use crate::model::{room::Room, user::User};
 
 use self::room::RoomAction;
 use self::{
@@ -15,14 +13,14 @@ use self::{
 use async_graphql::*;
 
 #[derive(MergedObject, Default)]
-pub struct Query(UserQuery, RoomQuery, NodeQuery);
+pub struct Query(UserQuery, RoomQuery, /*NodeQuery*/);
 
 #[derive(MergedObject, Default)]
 pub struct Mutation(UserMutation, RoomMutation);
 
 #[derive(MergedSubscription, Default)]
 pub struct Subscription(RoomSubscription);
-
+/* 
 #[derive(Interface, Clone)]
 #[graphql(field(name = "id", type = "Id<Node>"))]
 pub enum Node {
@@ -83,3 +81,4 @@ impl NodeQuery {
         Node::fetch_node(id, ctx).ok().flatten()
     }
 }
+*/

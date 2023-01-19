@@ -1,28 +1,28 @@
-use api_macro::Model;
 use async_graphql::{connection::*, ComplexObject, Context, Error, SimpleObject};
 
 use crate::{
     auth::authority::Authority,
-    store::{DataStore, DataStoreEntry},
     types::{
         color::{Color, ColorType},
-        id::{Id},
         time::Time,
         token::Token,
     },
+    Database
 };
 
-use super::{user::User, Model};
+use musty::prelude::{Id, model, Model};
+use super::{user::User};
+use mongodb::bson::{doc, Bson};
 
 pub const MAX_ROOM_SIZE: usize = 5;
 pub const INVITE_EXPIRY_MINUTES: usize = 5;
 
-#[derive(Debug, Clone, SimpleObject, Model)]
-#[model(node_suffix = "r")]
+#[derive(Clone, SimpleObject)]
 #[graphql(complex)]
+#[model(mongo())]
 pub struct Room {
     #[graphql(skip)]
-    pub id: Id<Self>,
+    pub id: String,
     pub name: String,
     pub owner: Option<Id<User>>,
     pub members: Vec<RoomMember>,
@@ -34,13 +34,9 @@ pub struct Room {
 
 #[ComplexObject]
 impl Room {
-    pub async fn id(&self) -> Id<Self> {
-        self.id.clone()
-    }
-
     async fn get_my_member<'ctx>(&self, ctx: &Context<'ctx>) -> async_graphql::Result<RoomMember> {
-        let user = ctx.user()?;
-        if let Some(member) = self.members.iter().find(|m| &m.user == &user.id) {
+        let user = ctx.user().await?;
+        if let Some(member) = self.members.iter().find(|m| &m.id == &user.id) {
             return async_graphql::Result::Ok(member.clone());
         } else {
             return async_graphql::Result::Err("You are not a member of this room".into());
@@ -98,7 +94,7 @@ impl Room {
 impl Room {
     pub fn new(name: String) -> Self {
         Self {
-            id: Id::new(),
+            id: "hi".to_string().into(),
             name,
             owner: None,
             members: vec![],
@@ -126,7 +122,7 @@ impl Room {
     }
 
     pub fn join(&mut self, user: &User, color: Option<ColorType>) -> Result<RoomMember, Error> {
-        if self.members.iter().any(|m| m.user == user.id) {
+        if self.members.iter().any(|m| m.id == user.id) {
             return Err("User already in room".into());
         }
         if let Some(color) = color {
@@ -140,23 +136,21 @@ impl Room {
     }
 
     pub fn leave(&mut self, user: &Id<User>) -> Result<RoomMember, Error> {
-        if let Some(index) = self.members.iter().position(|m| &m.user == user) {
+        if let Some(index) = self.members.iter().position(|m| &m.id == user) {
             let room_member = self.members.remove(index);
             return Ok(room_member);
         }
         Err("User not in room".into())
     }
 
-    pub fn is_member_user(&self, id: &Id<User>) -> bool {
-        self.members.iter().any(|m| &m.user == id)
-    }
-
-    pub fn is_member(&self, id: &Id<RoomMember>) -> bool {
+    pub fn is_member(&self, id: &Id<User>) -> bool {
         self.members.iter().any(|m| &m.id == id)
     }
 
     pub fn is_connected(&self, id: &Id<User>) -> bool {
-        self.get_member_by_user_id(id).map(|m| m.connected).unwrap_or(false)
+        self.get_member(id)
+            .map(|m| m.connected)
+            .unwrap_or(false)
     }
 
     pub fn is_owner(&self, id: &Id<User>) -> bool {
@@ -168,7 +162,7 @@ impl Room {
     }
 
     pub fn can_pass_remote(&self, from: &Id<User>, to: &Id<User>) -> bool {
-        if !self.is_member_user(to) {
+        if !self.is_member(to) {
             return false;
         }
         if let Some(owner) = &self.owner {
@@ -184,14 +178,17 @@ impl Room {
         false
     }
 
-    pub fn pass_remote(&mut self, from: &Id<User>, to: Id<User>) -> Result<(), Error> {
-        if !self.is_member_user(&from) || !self.is_member_user(&to) {
+    pub fn pass_remote(&mut self, from: &Id<User>, to: &Id<User>) -> Result<(), Error> {
+        if !self.is_member(&from) || !self.is_member(&to) {
             return Err("User not in room".into());
         }
+        
         if !self.can_pass_remote(&from, &to) {
             return Err("You don't have the remote".into());
         }
-        self.remote = Some(to);
+
+        self.remote = Some(to.clone());
+
         Ok(())
     }
 
@@ -213,24 +210,16 @@ impl Room {
         !self.members.iter().any(|m| m.color.name == color)
     }
 
-    pub fn get_member_by_user_id(&self, id: &Id<User>) -> Option<&RoomMember> {
-        self.members.iter().find(|m| &m.user == id)
-    }
-
-    pub fn get_member_by_user_id_mut(&mut self, id: &Id<User>) -> Option<&mut RoomMember> {
-        self.members.iter_mut().find(|m| &m.user == id)
-    }
-
-    pub fn get_member(&self, id: &Id<RoomMember>) -> Option<&RoomMember> {
+    pub fn get_member(&self, id: &Id<User>) -> Option<&RoomMember> {
         self.members.iter().find(|m| &m.id == id)
     }
 
-    pub fn get_member_mut(&mut self, id: &Id<RoomMember>) -> Option<&mut RoomMember> {
+    pub fn get_member_mut(&mut self, id: &Id<User>) -> Option<&mut RoomMember> {
         self.members.iter_mut().find(|m| &m.id == id)
     }
 
     pub fn create_invite(&mut self, user_id: Id<User>) -> Result<RoomInvite, Error> {
-        if !self.is_member_user(&user_id) {
+        if !self.is_member(&user_id) {
             return Err("User not in room".into());
         }
 
@@ -250,7 +239,7 @@ impl Room {
 
     pub fn revoke_invite(&mut self, token: impl ToString) -> Result<(), Error> {
         let token = token.to_string();
-        if let Some(index) = self.invites.iter().position(|i| i.token.check(&token)) {
+        if let Some(index) = self.invites.iter().position(|i| i.token.validate(&token)) {
             self.invites.remove(index);
             return Ok(());
         }
@@ -259,7 +248,7 @@ impl Room {
 
     pub fn check_invite(&self, token: impl ToString) -> bool {
         let token = token.to_string();
-        self.invites.iter().any(|i| i.token.check(&token))
+        self.invites.iter().any(|i| i.token.validate(&token))
     }
 
     pub fn is_invited_or_owner(&self, user: &User, token: Option<String>) -> bool {
@@ -281,60 +270,37 @@ impl Room {
         author: &User,
         msg: impl ToString,
     ) -> Result<RoomChatMsg, Error> {
-        if !self.is_member_user(&author.id) {
+        if !self.is_member(&author.id) {
             return Err("User not in room".into());
         }
-        let msg = RoomChatMsg::new(
-            Id::new(),
-            author.id.clone(),
-            msg.to_string(),
-            Time::now(),
-        );
+        let msg = RoomChatMsg::new(author.id.clone(), msg.to_string(), Time::now());
         Ok(msg)
     }
 }
 
 // helpers
 impl Room {
-    pub fn any_room<F: Fn(&Room) -> bool>(room_store: &DataStore<Room>, func: F) -> bool {
-        room_store.data.lock().unwrap().values().any(|r| func(r))
+    pub async fn get_by_member_user_id<'a>(
+        db: &Database,
+        user: &'a Id<User>,
+    ) -> Option<Room> {
+        let id: Bson = user.try_into().unwrap();
+        Room::find_one(&db, doc!{ "members.user": id }).await.unwrap()
     }
 
-    pub fn find_room<F: Fn(&Room) -> bool>(
-        room_store: &DataStore<Room>,
-        func: F,
-    ) -> Option<DataStoreEntry<Room>> {
-        let id = room_store
-            .data
-            .lock()
-            .unwrap()
-            .values()
-            .find(|r| func(r))
-            .map(|r| r.id.clone());
-        if let Some(id) = id {
-            room_store.get(&id)
-        } else {
-            None
-        }
-    }
-
-    pub fn get_by_member_user_id<'a>(room_store: &'a DataStore<Room>, user: &'a Id<User>) -> Option<DataStoreEntry<'a, Room>> {
-        Self::find_room(room_store, |r| r.is_member_user(user))
-    }
-
-    pub fn get_by_member<'a>(room_store: &'a DataStore<Room>, id: &'a Id<RoomMember>) -> Option<DataStoreEntry<'a, Room>> {
-        Self::find_room(room_store, |r| r.is_member(id))
+    pub async fn get_by_invite_token<'a>(
+        db: &Database,
+        token: &'a str,
+    ) -> Option<Room> {
+        Room::find_one(&db, doc!{ "invites.token": token }).await.unwrap()
     }
 }
 
-#[derive(Debug, Clone, SimpleObject, Model)]
-#[model(node_suffix = "rm")]
+#[derive(Debug, Clone, SimpleObject, serde::Serialize, serde::Deserialize)]
 #[graphql(complex)]
 pub struct RoomMember {
     #[graphql(skip)]
-    pub id: Id<Self>,
-    #[graphql(skip)]
-    pub user: Id<User>,
+    pub id: Id<User>,
     pub color: Color,
     pub connected: bool,
     pub typing: bool,
@@ -343,8 +309,7 @@ pub struct RoomMember {
 impl RoomMember {
     pub fn new(user: Id<User>, room: &Room, color: Option<ColorType>) -> Self {
         Self {
-            id: Id::new(),
-            user,
+            id: user,
             color: color.unwrap_or(room.pick_available_color()).into(),
             connected: false,
             typing: false,
@@ -354,29 +319,27 @@ impl RoomMember {
 
 #[ComplexObject]
 impl RoomMember {
-    pub async fn id(&self) -> Id<Self> {
+    pub async fn id(&self) -> Id<User> {
         self.id.clone()
     }
 
     async fn user(&self, ctx: &Context<'_>) -> async_graphql::Result<User> {
-        let user_store = ctx.data::<DataStore<User>>()?;
-        let user = user_store.get(&self.user).ok_or("User not found")?;
-        Ok(user.clone())
+        let db = ctx.data::<Database>()?;
+        let user = User::get_by_id(&db, self.id.clone()).await?;
+        Ok(user.unwrap())
     }
 }
 
-#[derive(Debug, Clone, SimpleObject)]
+#[derive(Debug, Clone, SimpleObject, serde::Serialize, serde::Deserialize)]
 pub struct RoomChatMsg {
-    pub id: Id<Self>,
     pub author: Id<User>,
     pub msg: String,
     pub time: Time,
 }
 
 impl RoomChatMsg {
-    pub fn new(id: Id<Self>, author: Id<User>, msg: String, time: Time) -> Self {
+    pub fn new(author: Id<User>, msg: String, time: Time) -> Self {
         Self {
-            id,
             author,
             msg,
             time,
@@ -384,14 +347,14 @@ impl RoomChatMsg {
     }
 }
 
-impl Model for RoomChatMsg {
+/*impl Model for RoomChatMsg {
     const NODE_SUFFIX: &'static str = "msg";
     fn model_id(&self) -> &Id<Self> {
         &self.id
     }
-}
+}*/
 
-#[derive(Debug, Clone, SimpleObject)]
+#[derive(Debug, Clone, SimpleObject, serde::Serialize, serde::Deserialize)]
 pub struct RoomInvite {
     pub token: Token,
     pub inviter: Id<User>, // user id
@@ -434,8 +397,8 @@ mod tests {
     fn room_join() {
         let (room, owner, friend) = create_room_with_members();
         assert_eq!(room.members.len(), 2);
-        assert!(room.is_member_user(&owner.id));
-        assert!(room.is_member_user(&friend.id));
+        assert!(room.is_member(&owner.id));
+        assert!(room.is_member(&friend.id));
     }
 
     #[test]
@@ -443,7 +406,7 @@ mod tests {
         let (mut room, owner, friend) = create_room_with_members();
         room.leave(&friend.id).unwrap();
         assert_eq!(room.members.len(), 1);
-        assert!(room.is_member_user(&owner.id));
-        assert!(!room.is_member_user(&friend.id));
+        assert!(room.is_member(&owner.id));
+        assert!(!room.is_member(&friend.id));
     }
 }

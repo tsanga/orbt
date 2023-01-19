@@ -51,7 +51,7 @@ impl Token {
         }
     }
 
-    pub fn check(&self, other: impl ToString) -> bool {
+    pub fn validate(&self, other: impl ToString) -> bool {
         if !self.is_valid() {
             return false;
         }
