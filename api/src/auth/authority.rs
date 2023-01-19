@@ -1,18 +1,20 @@
-use async_graphql::{Context, Error};
+use async_graphql::{Context, Error, async_trait::async_trait};
+use musty::Model;
 
 use crate::{
-    model::{user::User, Model, room::Room},
-    store::{DataStore, DataStoreEntry},
+    model::{room::Room, user::User}, Database,
 };
 
 use super::{action::Action, actor::Actor};
 
+#[async_trait]
 pub trait Authority {
     fn require_act<M>(&self, action: impl Action<M>, model: &M) -> Result<Actor, Error>;
-    fn user(&self) -> Result<DataStoreEntry<User>, Error>;
-    fn room(&self) -> Result<DataStoreEntry<Room>, Error>;
+    async fn user(&self) -> Result<User, Error>;
+    async fn room(&self) -> Result<Room, Error>;
 }
 
+#[async_trait]
 impl Authority for Context<'_> {
     fn require_act<M>(&self, action: impl Action<M>, model: &M) -> Result<Actor, Error> {
         let Ok(actor) = self.data::<Actor>() else { return Err("Not authenticated".into()) };
@@ -26,37 +28,38 @@ impl Authority for Context<'_> {
         }
     }
 
-    fn user(&self) -> Result<DataStoreEntry<User>, Error> {
-        User::from_context(&self)
+
+    async fn user(&self) -> Result<User, Error> {
+        User::from_context(&self).await
     }
 
-    fn room(&self) -> Result<DataStoreEntry<Room>, Error> {
-        Room::from_context(&self)
+    async fn room(&self) -> Result<Room, Error> {
+        Room::from_context(&self).await
     }
 }
 
-pub trait FromContext where Self: Model {
-    fn from_context<'a>(ctx: &Context<'a>) -> async_graphql::Result<DataStoreEntry<'a, Self>>;
+#[async_trait]
+pub trait FromContext where Self: Sized {
+    async fn from_context<'a>(ctx: &Context<'a>) -> async_graphql::Result<Self>;
 }
 
+#[async_trait]
 impl FromContext for User {
-    fn from_context<'a>(ctx: &Context<'a>) -> async_graphql::Result<DataStoreEntry<'a, Self>> {
+    async fn from_context<'a>(ctx: &Context<'a>) -> async_graphql::Result<Self> {
         let actor = ctx.data::<Actor>()?;
-        let Actor::User(user_id) = actor else { return Err("Requires 'user' actor type.".into()) };
-        let user_store = ctx.data::<DataStore<User>>()?;
-        let user = user_store
-            .get(user_id)
-            .ok_or::<async_graphql::Error>("User not found.".into())?;
-        Ok(user)
+        let Actor::User(user) = actor else { return Err("Requires 'user' actor type.".into()) };
+        Ok(user.clone())
     }
 }
 
+#[async_trait]
 impl FromContext for Room {
-    fn from_context<'a>(ctx: &Context<'a>) -> async_graphql::Result<DataStoreEntry<'a, Self>> {
+    async fn from_context<'a>(ctx: &Context<'a>) -> async_graphql::Result<Self> {
         let actor = ctx.data::<Actor>()?;
-        let Actor::User(user_id) = actor else { return Err("Requires 'user' actor type.".into()) };
-        let room_store = ctx.data::<DataStore<Room>>()?;
-        let room = Room::get_by_member_user_id(room_store, user_id).ok_or::<async_graphql::Error>("User is not in a room".into())?;
+        let Actor::User(user) = actor else { return Err("Requires 'user' actor type.".into()) };
+        let db = ctx.data::<Database>()?;
+        let room = Room::get_by_member_user_id(&db, &user.id).await
+            .ok_or::<async_graphql::Error>("User is not in a room".into())?;
         Ok(room)
     }
 }

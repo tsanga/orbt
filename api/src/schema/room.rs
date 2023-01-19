@@ -1,13 +1,15 @@
-use async_graphql::*;
+use async_graphql::{*, async_trait::async_trait};
 use futures::Stream;
 
 use crate::{
     auth::{action::Action, actor::Actor, authority::Authority},
     model::{room::Room, user::User},
-    store::DataStore,
     stream::{StreamControl, Subscriber},
-    types::{color::ColorType, id::Id, token::Token},
+    types::{color::ColorType, token::Token},
+    Database,
 };
+
+use musty::prelude::{Id, Model};
 
 #[derive(Default)]
 pub struct RoomQuery;
@@ -20,23 +22,25 @@ pub struct RoomSubscription;
 
 #[Object]
 impl RoomQuery {
-    async fn room<'ctx>(&self, ctx: &Context<'ctx>, room: Id<Room>) -> Result<Option<Room>> {
-        let room_store = ctx.data::<DataStore<Room>>()?;
-        let room = room_store.get(&room);
+    async fn room<'ctx>(&self, ctx: &Context<'ctx>, id: Id<Room>) -> Result<Option<Room>> {
+        let db = ctx.data::<Database>()?;
+        let room = Room::get_by_id(&db, id).await?;
+
         if let Some(room) = &room {
             ctx.require_act(RoomAction::Get, &*room)?;
         }
-        Ok(room.as_deref().cloned())
+
+        Ok(room)
     }
 }
 
 #[Object]
 impl RoomMutation {
     async fn create_room<'ctx>(&self, ctx: &Context<'ctx>, name: Option<String>) -> Result<Room> {
-        let user = ctx.user()?;
-        let room_store = ctx.data::<DataStore<Room>>()?;
+        let user: User = ctx.user().await?;
+        let db = ctx.data::<Database>()?;
 
-        if Room::any_room(room_store, |r| r.is_owner(&user.id)) {
+        if user.get_owned_room(&db).await.is_some() {
             return Err("You have already created a room".into());
         }
 
@@ -51,45 +55,49 @@ impl RoomMutation {
         let mut room = Room::new(room_name);
 
         room.init_owner(&user);
+        room.save(&db).await?;
 
-        room_store.insert(room.clone());
         Ok(room)
     }
 
     async fn send_chat_message<'ctx>(&self, ctx: &Context<'ctx>, msg: String) -> Result<Room> {
-        let user = ctx.user()?;
-        let mut room = ctx.room()?;
+        let db = ctx.data::<Database>()?;
+        let user = ctx.user().await?;
+        let mut room = ctx.room().await?;
 
         ctx.require_act(RoomAction::SendChat, &room)?;
 
         let room_chat_msg = room.create_chat_msg(&user, msg)?;
         room.add_chat_msg(room_chat_msg);
+        room.save(&db).await?;
 
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
         stream_ctl.publish(room.clone());
 
-        Ok(room.clone())
+        Ok(room)
     }
 
     async fn pass_room_remote<'ctx>(&self, ctx: &Context<'ctx>, to_user: Id<User>) -> Result<Room> {
-        let user = ctx.user()?;
-        let mut room = ctx.room()?;
+        let db = ctx.data::<Database>()?;
+        let user = ctx.user().await?;
+        let mut room = ctx.room().await?;
 
         ctx.require_act(RoomAction::PassRemote(&to_user), &room)?;
 
-        if !room.is_member_user(&user.id) {
+        if !room.is_member(&user.id) {
             return Err("You are not a member of that room".into());
         }
-        if !room.is_member_user(&to_user) {
+        if !room.is_member(&to_user) {
             return Err("That user is not a member of the room".into());
         }
 
-        room.pass_remote(&user.id, to_user.clone())?;
+        room.pass_remote(&user.id, &to_user)?;
+        room.save(&db).await?;
 
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
         stream_ctl.publish(room.clone());
 
-        Ok(room.clone())
+        Ok(room)
     }
 
     async fn join_room<'ctx>(
@@ -98,44 +106,39 @@ impl RoomMutation {
         invite_token: Option<String>,
         color: Option<ColorType>,
     ) -> Result<Room> {
-        let room_store = ctx.data::<DataStore<Room>>()?;
-
-        let user = ctx.user()?;
+        let db = ctx.data::<Database>()?;
+        let user = ctx.user().await?;
 
         if user.name.len() == 0 {
             return Err("You must set a name before joining a room".into());
         }
 
-        if Room::any_room(room_store, |r| r.is_member_user(&user.id)) {
+        if Room::get_by_member_user_id(&db, &user.id).await.is_some() {
             return Err("You are already a member of another room".into());
         }
 
-        let room_id = if let Some(invite_token) = invite_token {
-            Room::find_room(room_store, |r| r.check_invite(&invite_token))
-                .map(|r| r.id.clone())
-                .ok_or::<async_graphql::Error>("Room not found".into())?
+        let mut room = if let Some(invite_token) = invite_token {
+            Room::get_by_invite_token(&db, &invite_token).await.ok_or::<async_graphql::Error>("Room not found".into())
         } else {
-            Room::find_room(room_store, |r| r.is_owner(&user.id))
-                .map(|r| r.id.clone())
-                .ok_or::<async_graphql::Error>("You are not the owner of any room".into())?
-        };
-
-        let Some(mut room) = room_store.get(&room_id) else { return Err("Room not found".into()) };
+            user.get_owned_room(&db).await.ok_or::<async_graphql::Error>("Room not found".into())
+        }?;
 
         if room.members.len() >= crate::model::room::MAX_ROOM_SIZE {
             return Err("Room is full".into());
         };
         room.join(&user, color)?;
+        room.save(&db).await?;
 
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
         stream_ctl.publish(room.clone());
 
-        Ok(room.clone())
+        Ok(room)
     }
 
     async fn leave_room<'ctx>(&self, ctx: &Context<'ctx>) -> Result<User> {
-        let user = ctx.user()?;
-        let mut room = ctx.room()?;
+        let db = ctx.data::<Database>()?;
+        let user = ctx.user().await?;
+        let mut room = ctx.room().await?;
 
         if room.is_owner(&user.id) {
             return Err("You cannot leave a room you own".into());
@@ -143,41 +146,48 @@ impl RoomMutation {
 
         ctx.require_act(RoomAction::Leave, &room)?;
         room.leave(&user.id)?;
+        room.save(&db).await?;
 
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
         stream_ctl.disconnect(&user.id);
         stream_ctl.publish(room.clone());
 
-        Ok(user.clone())
+        Ok(user)
     }
 
     async fn create_room_invite<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Token> {
-        let user = ctx.user()?;
-        let mut room = ctx.room()?;
+        let db = ctx.data::<Database>()?;
+        let user = ctx.user().await?;
+        let mut room = ctx.room().await?;
         ctx.require_act(RoomAction::CreateInvite, &room)?;
 
         let room_invite = room.create_invite(user.id.clone())?;
 
+        room.save(&db).await?;
+
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
         stream_ctl.publish(room.clone());
 
-        Ok(room_invite.token.clone())
+        Ok(room_invite.token)
     }
 
     async fn revoke_room_invite<'ctx>(&self, ctx: &Context<'ctx>, invite: String) -> Result<Room> {
-        let mut room = ctx.room()?;
+        let db = ctx.data::<Database>()?;
+        let mut room = ctx.room().await?;
         ctx.require_act(RoomAction::RevokeInvite(&invite), &room)?;
 
         room.revoke_invite(&invite)?;
+        room.save(&db).await?;
 
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
         stream_ctl.publish(room.clone());
 
-        Ok(room.clone())
+        Ok(room)
     }
 
     async fn kick_member<'ctx>(&self, ctx: &Context<'ctx>, member: Id<User>) -> Result<Room> {
-        let mut room = ctx.room()?;
+        let db = ctx.data::<Database>()?;
+        let mut room = ctx.room().await?;
 
         ctx.require_act(RoomAction::KickMember(&member), &room)?;
         if room.is_owner(&member) {
@@ -185,28 +195,32 @@ impl RoomMutation {
         }
 
         let room_member = room.leave(&member)?;
+        room.save(&db).await?;
 
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
 
-        stream_ctl.disconnect(&room_member.user);
+        stream_ctl.disconnect(&room_member.id);
         stream_ctl.publish(room.clone());
 
-        Ok(room.clone())
+        Ok(room)
     }
 
     async fn set_typing_status<'ctx>(&self, ctx: &Context<'ctx>, typing: bool) -> Result<Room> {
-        let user = ctx.user()?;
-        let mut room = ctx.room()?;
+        let db = ctx.data::<Database>()?;
+        let user = ctx.user().await?;
+        let mut room = ctx.room().await?;
         ctx.require_act(RoomAction::SetTypingStatus, &room)?;
 
-        let Some(member) = room.get_member_by_user_id_mut(&user.id) else { return Err("You are not in this room".into()) };
+        let Some(member) = room.get_member_mut(&user.id) else { return Err("You are not in this room".into()) };
 
         member.typing = typing;
+
+        room.save(&db).await?;
 
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
         stream_ctl.publish(room.clone());
 
-        Ok(room.clone())
+        Ok(room)
     }
 }
 
@@ -216,17 +230,17 @@ impl RoomSubscription {
         &'ctx self,
         ctx: &Context<'ctx>,
     ) -> Result<impl Stream<Item = Room> + 'ctx> {
-        let room_store = ctx.data::<DataStore<Room>>()?;
-        let mut room = ctx.room()?;
+        let db = ctx.data::<Database>()?;
+        let mut room = ctx.room().await?;
 
         let user = ctx
             .require_act(RoomAction::SubscribeChat, &room)?
-            .user(ctx)?;
+            .user(ctx).await?;
 
         let room_id = room.id.clone(); // room id
         let stream_ctl = ctx.data::<StreamControl<User, Room>>()?;
 
-        let Some(room_member) = room.get_member_by_user_id_mut(&user.id) else { return Err("You are not a member of this room".into()) };
+        let Some(room_member) = room.get_member_mut(&user.id) else { return Err("You are not a member of this room".into()) };
         if room_member.connected {
             return Err("You are already subscribed to this room".into());
         }
@@ -236,8 +250,8 @@ impl RoomSubscription {
         Ok(stream_ctl.subscribe(UserRoomSubscriber::new(
             user.id.clone(),
             room_id,
-            room_store.clone(),
-            stream_ctl.clone(),
+            db.clone(),
+            stream_ctl.clone()
         )))
     }
 }
@@ -245,7 +259,7 @@ impl RoomSubscription {
 pub struct UserRoomSubscriber {
     user: Id<User>,
     room: Id<Room>,
-    room_store: DataStore<Room>,
+    db: Database,
     stream_ctl: StreamControl<User, Room>,
 }
 
@@ -253,18 +267,19 @@ impl UserRoomSubscriber {
     pub fn new(
         user: Id<User>,
         room: Id<Room>,
-        room_store: DataStore<Room>,
+        db: Database,
         stream_ctl: StreamControl<User, Room>,
     ) -> Self {
         Self {
             user,
             room,
-            room_store,
+            db,
             stream_ctl,
         }
     }
 }
 
+#[async_trait]
 impl Subscriber<User, Room> for UserRoomSubscriber {
     fn subscriber_id(&self) -> &Id<User> {
         &self.user
@@ -274,9 +289,13 @@ impl Subscriber<User, Room> for UserRoomSubscriber {
         &self.room
     }
 
-    fn on_disconnect(&mut self) {
-        let Some(mut room) = self.room_store.get(&self.room) else { return };
-        let Some(room_member) = room.get_member_by_user_id_mut(&self.user) else { return };
+    async fn on_disconnect(&mut self) {
+        let db = &self.db;
+        let id = self.user.clone();
+        let room = self.room.clone();
+
+        let Some(mut room) = Room::get_by_id(&db, room).await.unwrap() else { return };
+        let Some(room_member) = room.get_member_mut(&id) else { return };
         room_member.connected = false;
         room_member.typing = false;
         if let Some(remote) = room.remote.as_ref() {
@@ -284,7 +303,7 @@ impl Subscriber<User, Room> for UserRoomSubscriber {
                 room.remote = room.owner.clone();
             }
         }
-        self.stream_ctl.publish(room.clone())
+        self.stream_ctl.publish(room);
     }
 
     fn map_msg(&self, msg: Room) -> Option<Room> {
@@ -314,42 +333,42 @@ impl<'a> Action<Room> for RoomAction<'a> {
         match actor {
             Actor::None => false,
             Actor::Internal => true,
-            Actor::User(user_id) => match self {
+            Actor::User(user) => match self {
                 Self::Get
                 | Self::SendChat
                 | Self::SubscribeChat
                 | Self::SubscribeMembers
                 | Self::SubscribeRemote
-                | Self::Leave => room.is_member_user(user_id),
-                Self::GetMember(id) => room.is_member_user(user_id) && room.is_member_user(id),
-                Self::PassRemote(to_user_id) => room.can_pass_remote(user_id, to_user_id),
+                | Self::Leave => room.is_member(&user.id),
+                Self::GetMember(id) => room.is_member(&user.id) && room.is_member(id),
+                Self::PassRemote(to_user_id) => room.can_pass_remote(&user.id, to_user_id),
                 Self::Join(token) => {
                     room.check_invite(token)
                         && room.members.len() < crate::model::room::MAX_ROOM_SIZE
                 }
                 Self::CreateInvite => {
-                    room.is_member_user(user_id)
-                        /*&& !room
-                            .invites
-                            .iter()
-                            .any(|i| &i.inviter == user_id && i.token.is_valid())*/
+                    room.is_member(&user.id)
+                    /*&& !room
+                    .invites
+                    .iter()
+                    .any(|i| &i.inviter == user_id && i.token.is_valid())*/
                 }
                 Self::RevokeInvite(token) => {
-                    let invite_exists = room.invites.iter().any(|i| i.token.check(&token));
-                    let is_member_or_owner = room.is_member_user(user_id) || room.is_owner(user_id);
-                    let is_owner_or_created_invite = room.is_owner(user_id)
+                    let invite_exists = room.invites.iter().any(|i| i.token.validate(&token));
+                    let is_member_or_owner = room.is_member(&user.id) || room.is_owner(&user.id);
+                    let is_owner_or_created_invite = room.is_owner(&user.id)
                         || room
                             .invites
                             .iter()
-                            .any(|i| &i.inviter == user_id && i.token.check(&token));
+                            .any(|i| &i.inviter == &user.id && i.token.validate(&token));
 
                     invite_exists && is_member_or_owner && is_owner_or_created_invite
                 }
-                Self::KickMember(id) => room.is_owner(user_id) && room.is_member_user(id),
+                Self::KickMember(id) => room.is_owner(&user.id) && room.is_member(id),
                 Self::SetTypingStatus => {
-                    room.is_member_user(user_id)
+                    room.is_member(&user.id)
                         && room
-                            .get_member_by_user_id(user_id)
+                            .get_member(&user.id)
                             .map(|m| m.connected)
                             .unwrap_or(false)
                 }

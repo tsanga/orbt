@@ -4,7 +4,6 @@ mod auth;
 mod model;
 mod schema;
 mod server;
-mod store;
 mod stream;
 mod types;
 
@@ -24,21 +23,16 @@ pub mod prelude {
 
 use async_graphql::Schema;
 use model::{room::Room, user::User};
-use store::DataStore;
+use server::OrbtData;
 use stream::StreamControl;
+
+pub type Database = musty::Musty<mongodb::Database>;
 
 pub async fn start_api_server<Fut>(callback: Option<impl FnOnce() -> Fut>) -> std::io::Result<()>
 where
     Fut: Future<Output = ()>,
 {
-    let user_store = DataStore::<User>::new();
-    let room_store = DataStore::<Room>::new();
     let stream_user_room_ctl = StreamControl::<User, Room>::new();
-    let orbt_data = server::OrbtData::new(
-        user_store.clone(),
-        room_store.clone(),
-        stream_user_room_ctl.clone(),
-    );
     let address = std::env::var("ADDRESS").unwrap_or("0.0.0.0".to_string());
     let port = std::env::var("PORT").unwrap_or("8080".to_string());
 
@@ -62,6 +56,15 @@ where
         }
     }
 
+    let db = musty::prelude::Musty::new(mongodb::Client::with_uri_str(
+        &std::env::var("MONGODB_URI").unwrap_or_else(|f| "mongodb://localhost:27017".to_string()),
+    )
+    .await
+    .unwrap()
+    .database("orbt")); 
+
+    let app_data = OrbtData::new(db.clone(), stream_user_room_ctl.clone());
+
     let server = HttpServer::new(move || {
         App::new()
             .wrap(
@@ -70,9 +73,8 @@ where
                     .allow_any_method()
                     .allow_any_origin(),
             )
-            .app_data(Data::new(orbt_data.clone()))
-            .app_data(Data::new(user_store.clone()))
-            .app_data(Data::new(room_store.clone()))
+            .app_data(Data::new(app_data.clone()))
+            .app_data(Data::new(db.clone()))
             .app_data(Data::new(stream_user_room_ctl.clone()))
             .service(
                 web::resource("/")
