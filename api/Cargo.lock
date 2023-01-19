@@ -1609,9 +1609,10 @@ dependencies = [
 [[package]]
 name = "musty"
 version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4eba224c3912cb9922a8426a0f8c44951e24fefbc180b8b4040f3730b8a0ada1"
 dependencies = [
  "anyhow",
- "async-graphql",
  "async-trait",
  "bson",
  "futures",
@@ -1624,6 +1625,8 @@ dependencies = [
 [[package]]
 name = "musty-proc-macro"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0eb36ed05e03204642b9d9eb7fc6f91701af93062bc5047343c4bc681d8389d"
 dependencies = [
  "darling 0.14.2",
  "proc-macro-error",
