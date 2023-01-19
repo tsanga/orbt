@@ -1613,6 +1613,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4eba224c3912cb9922a8426a0f8c44951e24fefbc180b8b4040f3730b8a0ada1"
 dependencies = [
  "anyhow",
+ "async-graphql",
  "async-trait",
  "bson",
  "futures",
